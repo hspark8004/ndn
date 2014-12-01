@@ -1,0 +1,16 @@
+BINARY := main
+
+CC := g++
+#CFLAG := -Wdeprecated-declarations
+CFLAG := 
+CPPFLAG := -std=c++11
+INCLUDE_FLAG := -I./include
+LIBRARY_FLAG := -levent -lpthread -levent_pthreads
+SOURCES := main.cpp Common.cpp face/TcpSenderFace.cpp face/TcpReceiverFace.cpp \
+	Interest.cpp Data.cpp PendingInterest.cpp FaceInformationBase.cpp
+
+all:
+	$(CC) -o $(BINARY) $(SOURCES) $(CFLAG) $(CPPFLAG) $(INCLUDE_FLAG) $(LIBRARY_FLAG)
+
+clean:
+	rm -rf $(BINARY)
