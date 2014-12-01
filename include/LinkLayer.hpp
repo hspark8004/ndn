@@ -1,22 +1,17 @@
 #ifndef LINKLAYER_HPP_
     #define LINKLAYER_HPP_
 
-//#define PAYLOAD_SIZE 1000
-
+#include <iostream>
 #include <unordered_map>
+#include <ctime>
 
 #include "Interest.hpp"
-
 #include "Container.hpp"
-
 #include "NdnlpData.hpp"
 #include "tlv_type.hpp"
 #include "tlv_length.hpp"
-
 #include "Fragment.hpp"
-
 #include "DefineVariable.hpp"
-//#define PAYLOAD_SIZE 1000
 
 using namespace std;
 
@@ -36,7 +31,6 @@ class LinkLayer {
 
         int sendData(int serverFd, unsigned char* data, uint64_t size);
 
-        //unsigned char* recvNdnPacket();
         void recvNdnPacket(unsigned char* packet, uint8_t* shost_mac);
 
         void constructTempStore(NdnlpData& lp, unsigned char* data, uint8_t* shost_mac);

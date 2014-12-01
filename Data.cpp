@@ -12,27 +12,27 @@ Data::Data(char* _name, unsigned char* _data, uint64_t size) {
     setMetaInfo(m);
 }
 
+Data::~Data() {
+    std::cout << "Data::~Data()" << std::endl;
+    delete m_name;
+    delete content;
+}
+
 void
 Data::setName(char* _name) {
-//    m_name = new char[strlen(_name) + 1];
     m_name = new char[strlen(_name)];
     strcpy(m_name, _name);
-    //m_name[strlen(_name)] = '\0';
 }
 
 void
 Data::setName(char* _name, uint16_t name_length) {
-//    m_name = new char[name_length + 1];
     m_name = new char[name_length];
 
-    //strcpy(m_name, _name);
     for(int i=0; i<name_length; i++)
         m_name[i] = _name[i];
-//    m_name[name_length] = '\0';
 }
 void
 Data::setMetaInfo(MetaInfo m) {
-//    meta = m;
     meta.setContentType(m.getContentType());
     meta.setFreshnessPeriod(m.getFreshnessPeriod());
     meta.setFinalBlockId(m.getFinalBlockId());

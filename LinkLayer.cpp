@@ -2,7 +2,6 @@
 
 #include <iostream>
 
-//#define PAYLOAD_SIZE 1000
 
 LinkLayer::LinkLayer() {
     std::cout << "LinkLayer()" << std::endl;
@@ -11,6 +10,8 @@ LinkLayer::LinkLayer() {
 LinkLayer::LinkLayer(Container* container) {
     std::cout << "LinkLayer(Container* container)" << std::endl;
     this->container = container;
+
+    srand((uint64_t)time(NULL));
 }
 
 Container*
@@ -51,6 +52,7 @@ LinkLayer::sendInterest(int fd, unsigned char* data, uint64_t size) {
     if( size % PAYLOAD_SIZE > 0 )
         packetCount++;
 
+//    srand((uint64_t)time(NULL));
     uint64_t packetId = rand(); // create packet ID
     for(int i=0; i<packetCount; i++) {
         NdnlpData ndnlp(
@@ -223,13 +225,15 @@ LinkLayer::assemblyTempStore(NdnlpData& lp, unsigned char* data, uint8_t* shost_
         
         bool resultAssemble = search->second->assemble(lp, data);
        
+        // 조립이 완전히 되지 않았으면 return! 완전히 되었으면 NdnLayer로 올려
         if(!resultAssemble)
             return;
         
-        std::cout << "???" << std::endl;
         getContainer()->getNdnLayer()->recvNdnPacket(search->second->getData(), shost_mac);
 
+        // temporaryStore에서 Fragment 지우기
         delete search->second;
-        temporaryStore.erase(lp.getSeqNum() - lp.getFragIndex());        
+        temporaryStore.erase(lp.getSeqNum() - lp.getFragIndex());
+        
     }
 }

@@ -162,7 +162,7 @@ NdnLayer::sendData(int serverFd, unsigned char* buf, uint64_t size) {
 
     Data DataStruct(combineChar, buf, size);
     
-    delete combineChar;
+    delete combineChar; // 메모리관리를 위해서....
    
 
     std::cout << "Data content Size : " << DataStruct.getContentSize() << std::endl;
@@ -182,6 +182,8 @@ NdnLayer::sendData(int serverFd, unsigned char* buf, uint64_t size) {
     memcpy(buffer + sizeof(tlv_type) + sizeof(tlv_length), DataStruct.getByte(), DataStruct.getSize());
     
     getContainer()->getLinkLayer()->sendData(serverFd, buffer, sizeof(buffer));
+
+
 }
 
 char*

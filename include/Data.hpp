@@ -18,7 +18,6 @@ class Data {
     private : 
         char* m_name;
         MetaInfo meta;
-//        unsigned char* content;
         size_t contentSize;
         unsigned char* content;
         uint8_t signature;
@@ -26,6 +25,7 @@ class Data {
     public : 
         Data();
         Data(char* _name, unsigned char* _data, uint64_t size);
+        ~Data();
         void setName(char* _name);
         void setName(char* _name, uint16_t name_length);
         void setMetaInfo(MetaInfo m);

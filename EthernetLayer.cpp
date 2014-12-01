@@ -159,8 +159,6 @@ EthernetLayer::sendData(int serverFd, unsigned char* data, uint64_t size)
     std::cout << "int EthernetLayer::sendData(unsigned char* data, uint64_t size)" << std::endl;
 
     struct ether_header ether;
-//    ether.ether_type = 10000;   // NDN PACKET
-//   ether.ether_type = DATA_TCP;
     ether.ether_type = NDN;
 
     const unsigned char* source_mac_addr = getMacAddress("eth0");
