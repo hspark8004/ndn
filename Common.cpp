@@ -3,12 +3,10 @@
 #include <string>
 #include "Common.hpp"
 #include "face/Face.hpp"
-#include "FaceInformationBase.hpp"
 
 using namespace std;
 
-pit_t pit;
-fib_t fib;
+struct event_base* eventBase;
 
 static char
 htoc(string s)

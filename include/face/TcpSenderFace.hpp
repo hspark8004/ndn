@@ -7,7 +7,6 @@
 #include "Common.hpp"
 #include "Interest.hpp"
 #include "Data.hpp"
-#include "PendingInterest.hpp"
 
 using namespace std;
 
@@ -29,7 +28,6 @@ public:
 private:
   void initSocket();
   void initEvent();
-  pit_t* p_pit;
   const int m_backlog = 100;
   struct event* p_event;
   unordered_map<int, struct event*>* p_socketEventMap;

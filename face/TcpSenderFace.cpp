@@ -113,7 +113,8 @@ TcpSenderFace::onReadSocket(evutil_socket_t fd, short events, void* arg)
 
     // Send close packet.
     Interest interest(prefix.append("/")); // Data length is zero.
-    pThis->sendInterest(interest.getName().c_str(), interest.getName().length());
+    // pThis->sendInterest(interest.getName().c_str(), interest.getName().length());
+    pThis->sendInterest(interest.getName(), strlen(interest.getName()));
 
     cout << "Close pakcet: " << interest.getName() << endl;
 
@@ -126,7 +127,8 @@ TcpSenderFace::onReadSocket(evutil_socket_t fd, short events, void* arg)
 
   Interest interest(prefix.append("/").append(urlEncode(data))); // Append data.
   cout << "Send pakcet: " << interest.getName() << endl;
-  pThis->sendInterest(interest.getName().c_str(), interest.getName().length());
+  // pThis->sendInterest(interest.getName().c_str(), interest.getName().length());
+  pThis->sendInterest(interest.getName(), strlen(interest.getName()) + len);
 }
 
 void

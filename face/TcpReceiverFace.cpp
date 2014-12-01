@@ -163,4 +163,10 @@ TcpReceiverFace::getRecvSocket()
 {
   return m_recvSocket;
 }
+
+inline string
+TcpReceiverFace::getName()
+{
+  return m_name;
+}
 #endif /* __DEBUG_MODE */
