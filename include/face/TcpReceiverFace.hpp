@@ -18,6 +18,7 @@ public:
   static void onReadSocket(evutil_socket_t fd, short events, void* arg);
   void onReceiveInterest(char* interest);
   unordered_map<int, struct event*>* getSocketEventMap();
+  string getName();
 #ifdef __DEBUG_MODE
   static void onTest(evutil_socket_t fd, short events, void* arg);
   void setSendSocket(int fd);

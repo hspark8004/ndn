@@ -2,6 +2,7 @@
     #define INTEREST_HPP_
 
 #include <iostream>
+#include <string>
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -10,6 +11,8 @@
 
 #include "tlv_type.hpp"
 #include "tlv_length.hpp"
+
+using namespace std;
 
 class Interest {
 private :
@@ -21,6 +24,7 @@ private :
 public :
 
     Interest();
+    Interest(string _name); // 이왕석 추가, 2014-12-02
     Interest(char* _name, uint8_t _selector, uint8_t _scope, uint64_t _time);
     
     //    setName(_name);

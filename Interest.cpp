@@ -4,6 +4,12 @@ Interest::Interest() {
 
 }
 
+Interest::Interest(string _name)
+{
+  m_name = new char[_name.length()];
+  memcpy(m_name, _name.c_str(), _name.length());
+}
+
 Interest::Interest(char* _name, uint8_t _selector, uint8_t _scope, uint64_t _time)
 {
     setName(_name);
