@@ -1,4 +1,5 @@
 #include "EthernetLayer.hpp"
+#include "Common.hpp"
 
 pcap_t* EthernetLayer::pcap_handle = NULL;
 
@@ -164,7 +165,7 @@ EthernetLayer::sendData(int serverFd, unsigned char* data, uint64_t size)
     const unsigned char* source_mac_addr = getMacAddress("eth0");
     memcpy(ether.ether_shost, source_mac_addr, sizeof(ether.ether_shost));
 
-    ReqInformation* req = getContainer()->getInterestInformation(serverFd);
+    ReqInformation* req = getInterestInformation(serverFd);
     if( req == NULL ) {
         std::cout << "Not Correct Information : " << serverFd << std::endl;
         return -1;

@@ -117,6 +117,18 @@ TcpReceiverFace::getSocketEventMap()
   return p_socketEventMap;
 }
 
+inline string
+TcpReceiverFace::getName()
+{
+  return m_name;
+}
+
+inline int
+TcpReceiverFace::getType()
+{
+  return FACE_TCP_RECEIVER;
+}
+
 #ifdef __DEBUG_MODE
 void
 TcpReceiverFace::onTest(evutil_socket_t fd, short events, void* arg)
@@ -162,11 +174,5 @@ int
 TcpReceiverFace::getRecvSocket()
 {
   return m_recvSocket;
-}
-
-inline string
-TcpReceiverFace::getName()
-{
-  return m_name;
 }
 #endif /* __DEBUG_MODE */

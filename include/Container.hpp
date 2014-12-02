@@ -1,16 +1,14 @@
 #ifndef CONTAINER_HPP_
-    #define CONTAINER_HPP_
+#define CONTAINER_HPP_
 
 #include "NdnLayer.hpp"
 #include "LinkLayer.hpp"
 #include "EthernetLayer.hpp"
 #include "ReqInformation.hpp"
-
-#include "FaceMap.hpp"
+#include "face/Face.hpp"
 
 #include <iostream>
 #include <vector>
-
 #include <unordered_map>
 
 using namespace std;
@@ -18,37 +16,27 @@ using namespace std;
 class NdnLayer;
 class LinkLayer;
 class EthernetLayer;
-
-class Container {
+class Container
+{
 private : 
-    char* comName;
+  char* comName;
 
-    NdnLayer* ndnLayer;
-    LinkLayer* linkLayer;
-    EthernetLayer* ethernetLayer;
+  NdnLayer* ndnLayer;
+  LinkLayer* linkLayer;
+  EthernetLayer* ethernetLayer;
 
-    int NextRecvInterestsIndex;
-    vector<ReqInformation>* RecvInterests;
-
-    unordered_map<int, FaceMap*>* ClientConnectionMap;
-    unordered_map<int, FaceMap*>* ServerConnectionMap;
+  unordered_map<int, Face*>* ClientConnectionMap;
+  unordered_map<int, Face*>* ServerConnectionMap;
 public : 
-    Container(char* com);
+  Container(char* com);
 
-    NdnLayer* getNdnLayer();
-    LinkLayer* getLinkLayer();
-    EthernetLayer* getEthernetLayer();
-    vector<ReqInformation>* getRecvInterests();
+  NdnLayer* getNdnLayer();
+  LinkLayer* getLinkLayer();
+  EthernetLayer* getEthernetLayer();
 
-    unordered_map<int, FaceMap*>* getClientConnectionMap();
-    unordered_map<int, FaceMap*>* getServerConnectionMap();
+  unordered_map<int, Face*>* getClientConnectionMap();
+  unordered_map<int, Face*>* getServerConnectionMap();
 
-    char* getComName();
-    void addInterestInformation(Interest interest, uint8_t* shost_mac);
-    void showInterestInformation();
-    ReqInformation* getInterestInformation(int serverFd);
-
+  char* getComName();
 };
-
-
 #endif

@@ -10,7 +10,7 @@ class FaceMap {
     public : 
         FaceMap(int type);
         void setConnectType(int type);
-        int getConnectType();
+        int getType();
 };
 
 

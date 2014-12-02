@@ -39,7 +39,7 @@ LinkLayer::sendInterest(int fd, unsigned char* data, uint64_t size) {
     }
 
     int LpFlag = 0;
-    switch(search->second->getConnectType())
+    switch(search->second->getType())
     {
         case TCP_FACE : LpFlag = 1; break;
         case UDP_FACE : LpFlag = 0; break;
@@ -95,7 +95,7 @@ LinkLayer::sendData(int serverFd, unsigned char* data, uint64_t size) {
         return -1;
     }
     int LpFlags;
-    switch(search->second->getConnectType())
+    switch(search->second->getType())
     {
         case TCP_FACE : LpFlags = 1; break;
         case UDP_FACE : LpFlags = 0; break;

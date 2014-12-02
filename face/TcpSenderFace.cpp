@@ -158,6 +158,11 @@ TcpSenderFace::getName()
   return m_name;
 }
 
+inline int
+TcpSenderFace::getType()
+{
+  return FACE_TCP_SENDER;
+}
 #ifdef __DEBUG_MODE
 void
 TcpSenderFace::setSendSocket(int fd)

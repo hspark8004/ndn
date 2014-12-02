@@ -6,5 +6,8 @@ using namespace std;
 
 class Face
 {
+public:
+  virtual int getType() = 0;
+  virtual string getName() = 0;
 };
 #endif /* __FACE */
