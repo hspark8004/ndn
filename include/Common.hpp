@@ -7,6 +7,9 @@
 
 #define __DEBUG_MODE
 
+#define FACE_TCP_SENDER 0
+#define FACE_TCP_RECEIVER 1
+
 using namespace std;
 
 runtime_error runtimeError(int* err);

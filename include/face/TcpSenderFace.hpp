@@ -20,7 +20,8 @@ public:
   void onReceiveData(char* name, unsigned char* data, size_t size);
   void sendInterest(const char* name, size_t len);
   unordered_map<int, struct event*>* getSocketEventMap();
-  string getName();
+  virtual string getName();
+  virtual int getType();
 #ifdef __DEBUG_MODE
   void setSendSocket(int fd);
   void setRecvSocket(int fd);
