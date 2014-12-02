@@ -36,7 +36,7 @@ EthernetLayer::Initializing_pcap() {
        char pcap_errbuf[PCAP_ERRBUF_SIZE];
        pcap_errbuf[0] = '\0';
 
-       pcap_handle = pcap_open_live("eth0", BUFSIZ, 0,1000, pcap_errbuf);
+       pcap_handle = pcap_open_live("wlan0", BUFSIZ, 0,1000, pcap_errbuf);
 
        if(pcap_errbuf[0] != '\0') {
           fprintf(stderr, "%s\n", pcap_errbuf);
@@ -58,7 +58,7 @@ EthernetLayer::sendInterest(unsigned char* data, uint64_t size) {
 
     ether.ether_type = NDN;
     
-    const unsigned char* source_mac_addr = getMacAddress("eth0");
+    const unsigned char* source_mac_addr = getMacAddress("wlan0");
     memcpy(ether.ether_shost, source_mac_addr, sizeof(ether.ether_shost));
     memset(ether.ether_dhost, 0xff, sizeof(ether.ether_dhost));
 
@@ -103,12 +103,7 @@ EthernetLayer::getMacAddress(char* interface_name)
         exit(1);
     }
 
-    int fd = socket(AF_INET, SOCK_DGRAM, 0);
-    if(fd == -1) {
-        fprintf(stderr, "fd error\n");
-        perror(0);
-        exit(1);
-    }
+    int fd = pcap_fileno(EthernetLayer::pcap_handle);
 
     if(ioctl(fd, SIOCGIFADDR, &ifr) == -1) {
         fprintf(stderr, "SIOCGIFADDR error\n");
@@ -131,9 +126,7 @@ EthernetLayer::getMacAddress(char* interface_name)
         exit(1);
     }
     
-    unsigned char* ret = (unsigned char*)ifr.ifr_hwaddr.sa_data;
-    close(fd);
-  return ret;
+  return (unsigned char*)ifr.ifr_hwaddr.sa_data;
 }
 
 void*

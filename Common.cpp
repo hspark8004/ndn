@@ -11,6 +11,7 @@ using namespace std;
 struct event_base* eventBase;
 rib_t rib;
 int NextRecvInterestsIndex = 1;
+int serverFaceId = 1;
 
 static char
 htoc(string s)

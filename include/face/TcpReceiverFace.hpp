@@ -17,7 +17,7 @@ public:
   ~TcpReceiverFace();
   int createConnection();
   static void onReadSocket(evutil_socket_t fd, short events, void* arg);
-  void onReceiveInterest(char* interest);
+  void onReceiveInterest(unsigned char* packet, uint8_t* shost_mac);
   unordered_map<int, struct event*>* getSocketEventMap();
   virtual string getName();
   virtual int getType();
@@ -28,7 +28,7 @@ public:
   int getRecvSocket();
 #endif /* __DEBUG_MODE */
 private:
-  Container* m_container;
+  Container* p_container;
   struct event_base* m_eventBase;
   unordered_map<int, struct event*>* p_socketEventMap;
   unordered_map<int, int> m_connectionMap;

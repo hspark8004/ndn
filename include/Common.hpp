@@ -31,3 +31,4 @@ typedef vector<ReqInformation> rib_t;
 extern rib_t rib;
 
 extern int NextRecvInterestsIndex;
+extern int serverFaceId;

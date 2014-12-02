@@ -17,9 +17,11 @@
 using namespace std;
 
 TcpReceiverFace::TcpReceiverFace(Container* container, string name, int port)
-  : m_container(container), m_name(name), m_port(port)
+  : p_container(container), m_name(name), m_port(port)
 {
   p_socketEventMap = new unordered_map<int, struct event*>;
+
+  (*p_container->getServerConnectionMap())[serverFaceId++] = this;
 }
 
 TcpReceiverFace::~TcpReceiverFace()
@@ -89,27 +91,35 @@ TcpReceiverFace::onReadSocket(evutil_socket_t fd, short events, void* arg)
 }
 
 void
-TcpReceiverFace::onReceiveInterest(char* interest)
+TcpReceiverFace::onReceiveInterest(unsigned char* packet, uint8_t* shost_mac)
 {
-  string name = getPrefix(interest);
-  string prefix = getPrefix(name);
-  string data = urlDecode(getData(interest));
-  int clntfd = atoi(getData(name).c_str());
-  int servfd = m_connectionMap[clntfd];
+  tlv_type type;
+  tlv_length length;
 
-  if(data.length() == 0) {
-    if(servfd > 0) {
-      m_connectionMap.erase(clntfd);
-      close(servfd);
-    }
-  } else {
-    if(servfd == 0) {
-      servfd = createConnection();
-      m_connectionMap[clntfd] = servfd;
-    }
+  memcpy(&type, packet, sizeof(tlv_type));
+  memcpy(&length, packet + sizeof(tlv_type), sizeof(tlv_length));
 
-    send(servfd, data.c_str(), data.length(), 0);
-  }
+  cout << "Recv Interest: " << packet + sizeof(tlv_type) + sizeof(tlv_length) << endl;
+
+  Interest recvInterest;
+  recvInterest.setNameSize(length.getNameLength());
+  recvInterest.setInterest(packet, length.getNameLength());
+  recvInterest.showInterestData();
+  
+  addInterestInformation(recvInterest, shost_mac);
+
+/*
+  showInterestInformation();
+
+  unsigned char tempBuffer[5000];
+  memset(tempBuffer, '1', sizeof(tempBuffer));
+
+  std::cout << "before" << std::endl;
+  std::cout << tempBuffer << std::endl;
+  sendData(123,
+          tempBuffer,
+          sizeof(tempBuffer));
+*/
 }
 
 inline unordered_map<int, struct event*>*
