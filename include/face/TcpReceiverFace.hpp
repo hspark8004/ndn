@@ -6,13 +6,14 @@
 #include <unordered_map>
 #include "face/Face.hpp"
 #include "Common.hpp"
+#include "Container.hpp"
 
 using namespace std;
 
 class TcpReceiverFace : public Face
 {
 public:
-  TcpReceiverFace(string name, int port);
+  TcpReceiverFace(Container* container, string name, int port);
   ~TcpReceiverFace();
   int createConnection();
   static void onReadSocket(evutil_socket_t fd, short events, void* arg);
@@ -27,6 +28,7 @@ public:
   int getRecvSocket();
 #endif /* __DEBUG_MODE */
 private:
+  Container* m_container;
   struct event_base* m_eventBase;
   unordered_map<int, struct event*>* p_socketEventMap;
   unordered_map<int, int> m_connectionMap;

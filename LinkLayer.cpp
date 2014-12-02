@@ -33,6 +33,14 @@ LinkLayer::sendInterest(int fd, unsigned char* data, uint64_t size) {
     }
 
     auto search = getContainer()->getClientConnectionMap()->find(fd);
+
+    auto map = getContainer()->getClientConnectionMap();
+
+    cout << "출력!!" << endl;
+    for(auto iter = map->begin(); iter != map->end(); iter++) {
+      cout << iter->first << endl;
+    }
+
     if(search == getContainer()->getClientConnectionMap()->end()) {
         std::cout << "등록되지 않은 fd" << std::endl;
         return -1;

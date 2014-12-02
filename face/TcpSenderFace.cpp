@@ -10,13 +10,16 @@
 #include <utility>
 #include <unordered_map>
 #include "Common.hpp"
+#include "Container.hpp"
 #include "face/TcpSenderFace.hpp"
+#include "tlv_type.hpp"
+#include "tlv_length.hpp"
 #include <errno.h>
 
 using namespace std;
 
-TcpSenderFace::TcpSenderFace(string name, int port)
-  : m_name(name), m_port(port)
+TcpSenderFace::TcpSenderFace(Container* container, string name, int port)
+  : p_container(container), m_name(name), m_port(port)
 {
   p_socketEventMap = new unordered_map<int, struct event*>;
 
@@ -86,6 +89,8 @@ TcpSenderFace::onAcceptSocket(evutil_socket_t fd, short events, void* arg)
     throw runtimeError(&errno);
   }
 
+  cout << "Accept: " << clntfd << endl;
+
   struct event* e = event_new(eventBase, clntfd, EV_READ | EV_PERSIST,
     TcpSenderFace::onReadSocket, arg);
 
@@ -94,11 +99,15 @@ TcpSenderFace::onAcceptSocket(evutil_socket_t fd, short events, void* arg)
   }
 
   (*pThis->getSocketEventMap())[clntfd] = e;
+
+  pThis->getContainer()->getClientConnectionMap()->insert({clntfd, pThis});
 }
 
 void
 TcpSenderFace::onReadSocket(evutil_socket_t fd, short events, void* arg)
 {
+  cout << "Read File: " << fd << endl;
+
   TcpSenderFace* pThis = (TcpSenderFace*)arg;
   char buf[BUFSIZ];
   ssize_t len = recv(fd, buf, BUFSIZ, 0);
@@ -106,17 +115,25 @@ TcpSenderFace::onReadSocket(evutil_socket_t fd, short events, void* arg)
   string prefix(pThis->getName());
 
   sprintf(buf, "%d", fd); // Get file descriptor.
-  prefix.append("/").append(buf); // Append file descriptor.
+  prefix = prefix.append("/").append(buf); // Append file descriptor.
+  tlv_type tlvType(1);
 
   if(len == 0) { // Gracefully closed.
     auto socketEventMap = pThis->getSocketEventMap();
 
     // Send close packet.
-    Interest interest(prefix.append("/")); // Data length is zero.
-    // pThis->sendInterest(interest.getName().c_str(), interest.getName().length());
-    pThis->sendInterest(interest.getName(), strlen(interest.getName()));
+    data = prefix.append("/");
+    tlv_length tlvLength(data.size(), 0);
 
-    cout << "Close pakcet: " << interest.getName() << endl;
+    char* name = new char[sizeof(tlv_type) + sizeof(tlv_length) + data.size() + 1];
+    memcpy(name, &tlvType, sizeof(tlv_type));
+    memcpy(name + sizeof(tlv_type), &tlvLength, sizeof(tlv_length));
+    copy(data.begin(), data.end(), name + sizeof(tlv_type) + sizeof(tlv_length));
+    name[sizeof(tlv_type) + sizeof(tlv_length) + data.size()] = '\0';
+
+    cout << "Name Length: " << tlvLength.getNameLength() << endl;
+    cout << "Close pakcet: " << name + sizeof(tlv_type) + sizeof(tlv_length) << endl;
+    pThis->sendInterest(fd, name, sizeof(tlv_type) + sizeof(tlv_length) + data.size());
 
     event_free((*socketEventMap)[fd]);
     close(fd);
@@ -125,21 +142,42 @@ TcpSenderFace::onReadSocket(evutil_socket_t fd, short events, void* arg)
     return;
   }
 
+  data = prefix.append("/").append(urlEncode(data));
+  tlv_length tlvLength(data.size(), 0);
+
+  char* name = new char[sizeof(tlv_type) + sizeof(tlv_length) + data.size() + 1];
+  memcpy(name, &tlvType, sizeof(tlv_type));
+  memcpy(name + sizeof(tlv_type), &tlvLength, sizeof(tlv_length));
+  copy(data.begin(), data.end(), name + sizeof(tlv_type) + sizeof(tlv_length));
+  name[sizeof(tlv_type) + sizeof(tlv_length) + data.size()] = '\0';
+
+  cout << "Name Length: " << tlvLength.getNameLength() << endl;
+  cout << "Data: " << name + sizeof(tlv_type) + sizeof(tlv_length) << endl;
+  pThis->sendInterest(fd, name, sizeof(tlv_type) + sizeof(tlv_length) + data.size());
+
+/*
+  cout << "Data: " << data << endl;
+  cout << "Prefix: " << prefix << endl;
+  cout <<  << endl;
   Interest interest(prefix.append("/").append(urlEncode(data))); // Append data.
   cout << "Send pakcet: " << interest.getName() << endl;
   // pThis->sendInterest(interest.getName().c_str(), interest.getName().length());
-  pThis->sendInterest(interest.getName(), strlen(interest.getName()) + len);
+  pThis->sendInterest(fd, interest.getName(), strlen(interest.getName()) + len);
+*/
 }
 
 void
-TcpSenderFace::onReceiveData(char* name, unsigned char* data, size_t size)
+TcpSenderFace::onReceiveData(char* name, char* data, size_t size)
 {
 }
 
 void
-TcpSenderFace::sendInterest(const char* name, size_t len)
+TcpSenderFace::sendInterest(int fd, char* name, uint64_t len)
 {
   size_t ret;
+
+  p_container->getLinkLayer()->sendInterest(fd, (unsigned char*)name, len);
+  delete name;
 
 #ifdef __DEBUG_MODE
   if((ret = send(m_sendSocket, name, len, 0)) < 0) {

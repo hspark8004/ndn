@@ -12,11 +12,12 @@
 #include "Common.hpp"
 #include "Interest.hpp"
 #include "face/TcpReceiverFace.hpp"
+#include "Container.hpp"
 
 using namespace std;
 
-TcpReceiverFace::TcpReceiverFace(string name, int port)
-  : m_name(name), m_port(port)
+TcpReceiverFace::TcpReceiverFace(Container* container, string name, int port)
+  : m_container(container), m_name(name), m_port(port)
 {
   p_socketEventMap = new unordered_map<int, struct event*>;
 }

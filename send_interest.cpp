@@ -35,7 +35,5 @@ int main(int argc, const char* argv[])
     
     Container container(comName);
 
-    container.getNdnLayer()->sendInterest(10, "org/secmem/gn/11/a.mp4");
-	
-    sleep(30000);
+	event_base_dispatch(eventBase);
 }

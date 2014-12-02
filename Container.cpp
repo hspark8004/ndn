@@ -23,14 +23,14 @@ Container::Container(char* com)
 
   // ClientConnectionMap->insert({10, c1});
   // ClientConnectionMap->insert({20, c2});
-  ClientConnectionMap->insert({10, new TcpSenderFace("/ndn", 10000)});
-
+  // ClientConnectionMap->insert({10, new TcpSenderFace(this, "/ndn", 10000)});
+  new TcpSenderFace(this, "/ndn", 10000);
   // FaceMap* s1 = new FaceMap(TCP_FACE);
   // FaceMap* s2 = new FaceMap(UDP_FACE);
 
   // ServerConnectionMap->insert({123, s1});
   // ServerConnectionMap->insert({456, s2});
-  ServerConnectionMap->insert({123, new TcpReceiverFace("/ndn", 20000)});
+  // ServerConnectionMap->insert({123, new TcpReceiverFace(this, "/ndn", 20000)});
 }
 
 NdnLayer*

@@ -1,5 +1,6 @@
 #include "EthernetLayer.hpp"
 #include "Common.hpp"
+#include <errno.h>
 
 pcap_t* EthernetLayer::pcap_handle = NULL;
 
@@ -117,6 +118,7 @@ EthernetLayer::getMacAddress(char* interface_name)
     }
 
     if(ioctl(fd, SIOCGIFHWADDR, &ifr) == -1) {
+      perror("ioctl");
         fprintf(stderr, "SIOCGIFHWADDR error\n");
         perror(0);
         close(fd);
@@ -128,7 +130,10 @@ EthernetLayer::getMacAddress(char* interface_name)
         close(fd);
         exit(1);
     }
-    return (unsigned char*)ifr.ifr_hwaddr.sa_data;
+    
+    unsigned char* ret = (unsigned char*)ifr.ifr_hwaddr.sa_data;
+    close(fd);
+  return ret;
 }
 
 void*
@@ -143,6 +148,7 @@ EthernetLayer::receive(void * arg) {
     while(1) {
 	    ether_header ehP;
         pThis->recvPacket = (unsigned char*)pcap_next(pThis->pcap_handle, &pThis->header);
+    if(pThis->recvPacket == NULL) continue;
 		memcpy(&ehP, pThis->recvPacket, sizeof(ether_header));
 
         switch(ehP.ether_type)
@@ -165,7 +171,7 @@ EthernetLayer::sendData(int serverFd, unsigned char* data, uint64_t size)
     struct ether_header ether;
     ether.ether_type = NDN;
 
-    const unsigned char* source_mac_addr = getMacAddress("eth0");
+    const unsigned char* source_mac_addr = getMacAddress("wlan0");
     memcpy(ether.ether_shost, source_mac_addr, sizeof(ether.ether_shost));
 
     ReqInformation* req = getInterestInformation(serverFd);
