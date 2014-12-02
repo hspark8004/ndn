@@ -139,7 +139,7 @@ EthernetLayer::receive(void * arg) {
    	//sleep(5000);
 	printf("------------ try receive ---------------\n");
 
-/*
+
     while(1) {
 	    ether_header ehP;
         pThis->recvPacket = (unsigned char*)pcap_next(pThis->pcap_handle, &pThis->header);
@@ -153,7 +153,7 @@ EthernetLayer::receive(void * arg) {
                 break;
         }
     }
-*/
+
 }
 
 

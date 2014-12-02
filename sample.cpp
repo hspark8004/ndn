@@ -1,29 +1,21 @@
-#include <iostream>
-#include <stdlib.h>
 #include <stdio.h>
-#include <string.h>
-using namespace std;
+#include <time.h>
 
 int main() {
-//    int num = 1234;
-//    char str[10];
-    
-    //str = itoa(num, str, 10);
-//    sprintf(str, "%d", num);
-    
-//    cout << str << endl;    // 1234
 
-//    cout << strlen(str) << endl; // 4
-    unsigned char ccc[10];
-    ccc[0] = 'a';
-    ccc[1] = 'b';
-    ccc[2] = 'c';
+    time_t timer;
+    struct tm* t;
 
-    cout << ccc << endl;
+    timer = time(NULL);
+//    localtime_s(&t, &timer);
+    t = localtime(&timer);
 
-    int c = 11.1;
-    cout << c << endl;
+    printf("%d-%d-%.d %.2d:%.2d:%.2d",
+            t->tm_year + 1900, t->tm_mon + 1, t->tm_mday,
+            t->tm_hour, t->tm_min, t->tm_sec
+            );
 
-    c += 0.5;
-    cout << c << endl;
 }
+
+
+

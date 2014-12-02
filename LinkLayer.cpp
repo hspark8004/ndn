@@ -41,8 +41,8 @@ LinkLayer::sendInterest(int fd, unsigned char* data, uint64_t size) {
     int LpFlag = 0;
     switch(search->second->getType())
     {
-        case TCP_FACE : LpFlag = 1; break;
-        case UDP_FACE : LpFlag = 0; break;
+        case TCP_FACE : LpFlag = 0; break;
+        case UDP_FACE : LpFlag = 1; break;
         default : 
                         std::cout << "FaceMap::getConnectionType() 값이 이상함" << std::endl;
                         return -2;
@@ -67,6 +67,10 @@ LinkLayer::sendInterest(int fd, unsigned char* data, uint64_t size) {
         memcpy(buf + sizeof(NdnlpData), data + PAYLOAD_SIZE * i, ndnlp.getPayload());
 
         getContainer()->getEthernetLayer()->sendInterest(buf, sizeof(NdnlpData) + size);
+
+        tlv_type temporaryType;
+        memcpy(&temporaryType, data, sizeof(tlv_type));
+        recordMonitoring(1, ndnlp, temporaryType);
     }
     return 1;
 }
@@ -97,8 +101,8 @@ LinkLayer::sendData(int serverFd, unsigned char* data, uint64_t size) {
     int LpFlags;
     switch(search->second->getType())
     {
-        case TCP_FACE : LpFlags = 1; break;
-        case UDP_FACE : LpFlags = 0; break;
+        case TCP_FACE : LpFlags = 0; break;
+        case UDP_FACE : LpFlags = 1; break;
         default : std::cout << "Not Defined FaceMap Connect Type" << std::endl; break;
     }
 
@@ -132,6 +136,10 @@ LinkLayer::sendData(int serverFd, unsigned char* data, uint64_t size) {
         getContainer()->getEthernetLayer()->sendData(serverFd, buf, sizeof(buf));
 
         // temporary save the packet to sent packet store! (key : lp.SeqNum, data : packet byte array);
+
+        tlv_type temporaryType;
+        memcpy(&temporaryType, data, sizeof(tlv_type));
+        recordMonitoring(1, ndnlp, temporaryType);
     }
 }
 
@@ -146,9 +154,9 @@ LinkLayer::recvNdnPacket(unsigned char* packet, uint8_t* shost_mac) {
     lp.showNdnlpData();
 
 
-    if(lp.getFlags() == 0)  // UDP
+    if(lp.getFlags() == 1)  // UDP
         getContainer()->getNdnLayer()->recvNdnPacket(packet + sizeof(NdnlpData), shost_mac);
-    else if(lp.getFlags() == 1) {   // TCP
+    else if(lp.getFlags() == 0) {   // TCP
         // Add SeqNum to Ack Queue!
         std::cout << "NDN_TCP Receive! please add SeqNum to Ack Queue!" << std::endl;
 
@@ -159,16 +167,12 @@ LinkLayer::recvNdnPacket(unsigned char* packet, uint8_t* shost_mac) {
             constructTempStore(lp, packet + sizeof(NdnlpData), shost_mac);
         }
     }
-    /*
 
-    if(lp.getFragCount() == 1) {
-        getContainer()->getNdnLayer()->recvNdnPacket(packet + sizeof(NdnlpData), shost_mac);
-    } else {
-        // 분할패킷 등록 또는 조립.
-        constructTempStore(lp, packet + sizeof(NdnlpData), shost_mac);
-    }*/
+    // 모니터링 파일에 패킷정보 기록
+    tlv_type temporaryType;
+    memcpy(&temporaryType, packet + sizeof(NdnlpData), sizeof(tlv_type));
+    recordMonitoring(0, lp, temporaryType);
 }
-
 void
 LinkLayer::constructTempStore(NdnlpData& lp, unsigned char* data, uint8_t* shost_mac) {
     std::cout << "void LinkLayer::constructTempStore(NdnlpData& lp, unsigned char* data)" << std::endl;
@@ -236,4 +240,43 @@ LinkLayer::assemblyTempStore(NdnlpData& lp, unsigned char* data, uint8_t* shost_
         temporaryStore.erase(lp.getSeqNum() - lp.getFragIndex());
         
     }
+}
+
+
+// recordMonitoring
+// InOut : 0 : in
+//         1 : out
+void
+LinkLayer::recordMonitoring(int InOut, NdnlpData& lp, tlv_type& type) {
+
+    time_t timer;
+    struct tm* t;
+
+    timer = time(NULL);
+    t = localtime(&timer);
+
+    std::ofstream out("monitoring", ios::app);
+    
+    out << t->tm_year + 1900 << "-"
+        << setw(2) << t->tm_mon + 1 << "-"
+        << setw(2) << t->tm_mday << "\t"
+        << setw(2) << t->tm_hour << ":"
+        << setw(2) << t->tm_min << ":"
+        << setw(2) << t->tm_sec << "\t";
+
+    if(InOut == 0)
+        out << "IN" << "\t";
+    else
+        out << "OUT" << "\t";
+
+    if(lp.getFlags() == 0)  // TCP
+        out << "TCP" << "\t";
+    else                    // UDP
+        out << "UDP" << "\t";
+
+    std::cout << (unsigned int)type.getTlvType() << std::endl;
+    if(type.getTlvType() == (uint8_t)1)
+        out << "INTEREST" << "\n";
+    else
+        out << "DATA" << "\n";
 }

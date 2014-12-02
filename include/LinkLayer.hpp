@@ -4,6 +4,8 @@
 #include <iostream>
 #include <unordered_map>
 #include <ctime>
+#include <fstream>
+#include <iomanip>
 
 #include "Interest.hpp"
 #include "Container.hpp"
@@ -36,6 +38,8 @@ class LinkLayer {
         void constructTempStore(NdnlpData& lp, unsigned char* data, uint8_t* shost_mac);
         void registerTempStore(NdnlpData& lp, unsigned char* data, uint8_t* shost_mac);
         void assemblyTempStore(NdnlpData& lp, unsigned char* data, uint8_t* shost_mac);
+
+        void recordMonitoring(int InOut, NdnlpData& lp, tlv_type& type);
 };
 
 #endif
