@@ -1,32 +1,36 @@
+#include <unordered_map>
 #include "Container.hpp"
+#include "Common.hpp"
+#include "face/TcpSenderFace.hpp"
+#include "face/TcpReceiverFace.hpp"
 
-Container::Container(char* com) {
+using namespace std;
 
-    NextRecvInterestsIndex = 1;
+Container::Container(char* com)
+{
+  comName = new char[strlen(com)];
+  strcpy(comName, com);
 
-    comName = new char[strlen(com)];
-    strcpy(comName, com);
+  ndnLayer = new NdnLayer(this);
+  linkLayer = new LinkLayer(this);
+  ethernetLayer = new EthernetLayer(this);
 
-    ndnLayer = new NdnLayer(this);
-    linkLayer = new LinkLayer(this);
-    ethernetLayer = new EthernetLayer(this);
+  ClientConnectionMap = new unordered_map<int, Face*>;
+  ServerConnectionMap = new unordered_map<int, Face*>;
 
-    RecvInterests = new vector<ReqInformation>();
+  // FaceMap* c1 = new FaceMap(TCP_FACE);
+  // FaceMap* c2 = new FaceMap(UDP_FACE);
 
-    ClientConnectionMap = new unordered_map<int, FaceMap*>;
-    ServerConnectionMap = new unordered_map<int, FaceMap*>;
+  // ClientConnectionMap->insert({10, c1});
+  // ClientConnectionMap->insert({20, c2});
+  ClientConnectionMap->insert({10, new TcpSenderFace("/ndn", 10000)});
 
-    FaceMap* c1 = new FaceMap(TCP_FACE);
-    FaceMap* c2 = new FaceMap(UDP_FACE);
+  // FaceMap* s1 = new FaceMap(TCP_FACE);
+  // FaceMap* s2 = new FaceMap(UDP_FACE);
 
-    ClientConnectionMap->insert({10, c1});
-    ClientConnectionMap->insert({20, c2});
-
-    FaceMap* s1 = new FaceMap(TCP_FACE);
-    FaceMap* s2 = new FaceMap(UDP_FACE);
-
-    ServerConnectionMap->insert({123, s1});
-    ServerConnectionMap->insert({456, s2});
+  // ServerConnectionMap->insert({123, s1});
+  // ServerConnectionMap->insert({456, s2});
+  ServerConnectionMap->insert({123, new TcpReceiverFace("/ndn", 20000)});
 }
 
 NdnLayer*
@@ -44,48 +48,17 @@ Container::getEthernetLayer() {
     return ethernetLayer;
 }
 
-unordered_map<int, FaceMap*>*
+unordered_map<int, Face*>*
 Container::getClientConnectionMap() {
     return ClientConnectionMap;
 }
 
-unordered_map<int, FaceMap*>*
+unordered_map<int, Face*>*
 Container::getServerConnectionMap() {
     return ServerConnectionMap;
-}
-
-vector<ReqInformation>*
-Container::getRecvInterests() {
-    return RecvInterests;
 }
 
 char*
 Container::getComName() {
     return comName;
-}
-
-void
-Container::addInterestInformation(Interest interest, uint8_t* shost_mac) {
-    ReqInformation req(NextRecvInterestsIndex, interest, shost_mac);
-    RecvInterests->push_back(req);
-
-    NextRecvInterestsIndex++;
-}
-
-void
-Container::showInterestInformation() {
-    for(int i=0; i<RecvInterests->size(); i++)
-    {
-        RecvInterests->at(i).showInformation();
-    }
-}
-
-ReqInformation*
-Container::getInterestInformation(int serverFd) {
-    for(int i=0; i<RecvInterests->size(); i++)
-    {
-        if( serverFd == RecvInterests->at(i).getServerFd() )
-            return &RecvInterests->at(i);
-    }
-    return NULL;
 }

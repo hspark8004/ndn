@@ -1,4 +1,5 @@
 #include "NdnLayer.hpp"
+#include "Common.hpp"
 
 
 NdnLayer::NdnLayer() {
@@ -89,8 +90,8 @@ NdnLayer::recvInterestPacket(unsigned char* packet, tlv_length length, uint8_t* 
     
     //std::cout << "extract Data : " << recvInterest.extractData() << std::endl;
 
-    getContainer()->addInterestInformation(recvInterest, shost_mac);
-    getContainer()->showInterestInformation();
+    addInterestInformation(recvInterest, shost_mac);
+    showInterestInformation();
 
     if(isCorrectDest(recvInterest)) {
         std::cout << "CorrectDest" << std::endl;
@@ -146,10 +147,10 @@ NdnLayer::sendData(int serverFd, unsigned char* buf, uint64_t size) {
     //Data DataStruct(combineChars(getContainer()->getComName(), appName), buf, size);
 
     int destFd = -1;
-    for(int i=0; i<getContainer()->getRecvInterests()->size(); i++) {
-        if(serverFd == getContainer()->getRecvInterests()->at(i).getServerFd())
+    for(int i=0; i< rib.size(); i++) {
+        if(serverFd == rib.at(i).getServerFd())
         {
-            destFd = getContainer()->getRecvInterests()->at(i).getClientFd();
+            destFd = rib.at(i).getClientFd();
             break;
         }
     }

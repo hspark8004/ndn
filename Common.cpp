@@ -1,12 +1,16 @@
 #include <string.h>
 #include <stdexcept>
 #include <string>
+#include <vector>
 #include "Common.hpp"
 #include "face/Face.hpp"
+#include "ReqInformation.hpp"
 
 using namespace std;
 
 struct event_base* eventBase;
+rib_t rib;
+int NextRecvInterestsIndex = 1;
 
 static char
 htoc(string s)
@@ -116,4 +120,33 @@ string urlDecode(string url)
   }
 
   return ret;
+}
+
+void
+addInterestInformation(Interest interest, uint8_t* shost_mac)
+{
+  ReqInformation req(NextRecvInterestsIndex, interest, shost_mac);
+  rib.push_back(req);
+
+  NextRecvInterestsIndex++;
+}
+
+void
+showInterestInformation()
+{
+  for(int i = 0; i < rib.size(); i++) {
+    rib.at(i).showInformation();
+  }
+}
+
+ReqInformation*
+getInterestInformation(int serverFd)
+{
+  for(int i=0; i<rib.size(); i++) {
+    if(serverFd == rib.at(i).getServerFd()) {
+      return &rib.at(i);
+    }
+  }
+
+  return NULL;
 }

@@ -10,6 +10,6 @@ FaceMap::setConnectType(int type) {
 }
 
 int
-FaceMap::getConnectType() {
+FaceMap::getType() {
     return ConnectType;
 }

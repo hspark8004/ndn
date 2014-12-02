@@ -6,7 +6,7 @@ using namespace std;
 
 class Face
 {
-protected:
+public:
   virtual int getType() = 0;
   virtual string getName() = 0;
 };

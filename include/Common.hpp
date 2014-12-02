@@ -3,7 +3,9 @@
 #include <stdexcept>
 #include <unordered_map>
 #include <list>
+#include <vector>
 #include "face/Face.hpp"
+#include "ReqInformation.hpp"
 
 #define __DEBUG_MODE
 
@@ -20,4 +22,12 @@ string getData(string name);
 string urlEncode(string str);
 string urlDecode(string str);
 
+void addInterestInformation(Interest interest, uint8_t* shost_mac);
+void showInterestInformation();
+ReqInformation* getInterestInformation(int serverFd);
+
 extern struct event_base* eventBase;
+typedef vector<ReqInformation> rib_t;
+extern rib_t rib;
+
+extern int NextRecvInterestsIndex;
