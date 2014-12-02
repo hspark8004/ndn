@@ -1,3 +1,6 @@
+#include <event2/event.h>
+#include <event2/util.h>
+#include <event2/thread.h>
 #include <stdio.h>
 #include <pcap.h>
 #include <stdlib.h>
@@ -10,7 +13,7 @@
 #include <sys/ioctl.h>
 #include <unistd.h>
 #include <iostream>
-
+#include "Common.hpp"
 #include "Container.hpp"
 
 
@@ -22,6 +25,11 @@ int main(int argc, const char* argv[])
         std::cout << "example) ./main org/secmem/gn" << std::endl;
         exit(1);
     }
+
+  evthread_use_pthreads();
+  event_enable_debug_mode();
+  eventBase = event_base_new();
+
     char* comName = new char[strlen(argv[1])];
     strcpy(comName, argv[1]);
     
