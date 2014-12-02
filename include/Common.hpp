@@ -7,10 +7,10 @@
 #include "face/Face.hpp"
 #include "ReqInformation.hpp"
 
-#define __DEBUG_MODE
+//#define __DEBUG_MODE
 
-#define FACE_TCP_SENDER 0
-#define FACE_TCP_RECEIVER 1
+#define FACE_TCP_SENDER 2000
+#define FACE_TCP_RECEIVER 2001
 
 using namespace std;
 

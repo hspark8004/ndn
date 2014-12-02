@@ -141,9 +141,11 @@ TcpSenderFace::sendInterest(const char* name, size_t len)
 {
   size_t ret;
 
+#ifdef __DEBUG_MODE
   if((ret = send(m_sendSocket, name, len, 0)) < 0) {
     perror("send");
   }
+#endif /* __DEBUG_MODE */
 }
 
 inline unordered_map<int, struct event*>*
