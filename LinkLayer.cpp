@@ -12,6 +12,8 @@ LinkLayer::LinkLayer(Container* container) {
     this->container = container;
 
     srand((uint64_t)time(NULL));
+
+    monitoring_mutex = PTHREAD_MUTEX_INITIALIZER;
 }
 
 Container*
@@ -78,7 +80,7 @@ LinkLayer::sendInterest(int fd, unsigned char* data, uint64_t size) {
 
         tlv_type temporaryType;
         memcpy(&temporaryType, data, sizeof(tlv_type));
-        recordMonitoring(1, ndnlp, temporaryType);
+        recordMonitoring(1, ndnlp.getFlags(), temporaryType);
     }
     return 1;
 }
@@ -147,7 +149,7 @@ LinkLayer::sendData(int serverFd, unsigned char* data, uint64_t size) {
 
         tlv_type temporaryType;
         memcpy(&temporaryType, data, sizeof(tlv_type));
-        recordMonitoring(1, ndnlp, temporaryType);
+        recordMonitoring(1, ndnlp.getFlags(), temporaryType);
     }
 }
 
@@ -179,7 +181,7 @@ LinkLayer::recvNdnPacket(unsigned char* packet, uint8_t* shost_mac) {
     // 모니터링 파일에 패킷정보 기록
     tlv_type temporaryType;
     memcpy(&temporaryType, packet + sizeof(NdnlpData), sizeof(tlv_type));
-    recordMonitoring(0, lp, temporaryType);
+    recordMonitoring(0, lp.getFlags(), temporaryType);
 }
 void
 LinkLayer::constructTempStore(NdnlpData& lp, unsigned char* data, uint8_t* shost_mac) {
@@ -255,7 +257,9 @@ LinkLayer::assemblyTempStore(NdnlpData& lp, unsigned char* data, uint8_t* shost_
 // InOut : 0 : in
 //         1 : out
 void
-LinkLayer::recordMonitoring(int InOut, NdnlpData& lp, tlv_type& type) {
+LinkLayer::recordMonitoring(int InOut, int packetType, tlv_type& type) {
+
+    pthread_mutex_lock(&monitoring_mutex);
 
     time_t timer;
     struct tm* t;
@@ -267,7 +271,7 @@ LinkLayer::recordMonitoring(int InOut, NdnlpData& lp, tlv_type& type) {
     
     out << t->tm_year + 1900 << "-"
         << setw(2) << t->tm_mon + 1 << "-"
-        << setw(2) << t->tm_mday << "\t"
+        << setw(2) << t->tm_mday << "   "
         << setw(2) << t->tm_hour << ":"
         << setw(2) << t->tm_min << ":"
         << setw(2) << t->tm_sec << "\t";
@@ -277,9 +281,9 @@ LinkLayer::recordMonitoring(int InOut, NdnlpData& lp, tlv_type& type) {
     else
         out << "OUT" << "\t";
 
-    if(lp.getFlags() == 0)  // TCP
+    if(packetType == 0)         // TCP
         out << "TCP" << "\t";
-    else                    // UDP
+    else if(packetType == 1)    // UDP
         out << "UDP" << "\t";
 
     std::cout << (unsigned int)type.getTlvType() << std::endl;
@@ -287,4 +291,7 @@ LinkLayer::recordMonitoring(int InOut, NdnlpData& lp, tlv_type& type) {
         out << "INTEREST" << "\n";
     else
         out << "DATA" << "\n";
+
+
+    pthread_mutex_unlock(&monitoring_mutex);
 }

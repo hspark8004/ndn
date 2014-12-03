@@ -22,6 +22,8 @@ class LinkLayer {
     private : 
         Container* container;
         unordered_map<uint64_t, Fragment*> temporaryStore;
+
+        pthread_mutex_t monitoring_mutex;
     public : 
         LinkLayer();
         LinkLayer(Container* container);
@@ -39,7 +41,7 @@ class LinkLayer {
         void registerTempStore(NdnlpData& lp, unsigned char* data, uint8_t* shost_mac);
         void assemblyTempStore(NdnlpData& lp, unsigned char* data, uint8_t* shost_mac);
 
-        void recordMonitoring(int InOut, NdnlpData& lp, tlv_type& type);
+        void recordMonitoring(int InOut, int packetType, tlv_type& type);
 };
 
 #endif
