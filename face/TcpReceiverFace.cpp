@@ -41,7 +41,7 @@ TcpReceiverFace::createConnection()
   struct sockaddr_in servaddr;
   socklen_t addrlen = sizeof(servaddr);
   int clntfd;
-  int servfd;
+  int ret;
 
   if((clntfd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP)) < 0) {
     throw runtimeError(&errno);
@@ -52,15 +52,19 @@ TcpReceiverFace::createConnection()
   servaddr.sin_addr.s_addr = inet_addr("127.0.0.1");
   servaddr.sin_port = htons(m_port);
 
-  if((servfd = connect(clntfd, (struct sockaddr*)&servaddr, addrlen)) < 0) {
-//    throw runtimeError(&errno);
-    return -1; // Fail to connect legacy server.
+  if((ret = connect(clntfd, (struct sockaddr*)&servaddr, addrlen)) < 0) {
+    throw runtimeError(&errno);
+    // return -1; // Fail to connect legacy server.
   }
 
-  e = event_new(eventBase, servfd, EV_READ | EV_PERSIST,
+  e = event_new(eventBase, clntfd, EV_READ | EV_PERSIST,
     TcpReceiverFace::onReadSocket, (void*)this);
 
-  (*p_socketEventMap)[servfd] = e;
+  if(event_add(e, NULL) < 0) {
+    throw runtimeError(&errno);
+  }
+
+  (*p_socketEventMap)[clntfd] = e;
 
   return clntfd;
 }
@@ -77,7 +81,7 @@ TcpReceiverFace::onReadSocket(evutil_socket_t fd, short events, void* arg)
   sprintf(buf, "%d", fd); // Get file descriptor.
   prefix.append("/").append(buf); // Append file descriptor.
 
-  cout << "READ!!!!!" << endl;
+  cout << "READ!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!" << endl;
 
   if(len == 0) {
     auto socketEventMap = pThis->getSocketEventMap();
@@ -91,35 +95,26 @@ TcpReceiverFace::onReadSocket(evutil_socket_t fd, short events, void* arg)
 }
 
 void
-TcpReceiverFace::onReceiveInterest(unsigned char* packet, uint8_t* shost_mac)
+TcpReceiverFace::onReceiveInterest(int clntfd, string data)
 {
-  tlv_type type;
-  tlv_length length;
+  cout << "DDDDDDDDDData: " << data << endl;
+  int servfd = m_connectionMap[clntfd];
 
-  memcpy(&type, packet, sizeof(tlv_type));
-  memcpy(&length, packet + sizeof(tlv_type), sizeof(tlv_length));
+  if(data.length() == 0) {
+    if(servfd > 0) {
+      m_connectionMap.erase(clntfd);
+      close(servfd);
+    }
+  } else {
+    cout << "SERV: " << servfd << endl;
 
-  cout << "Recv Interest: " << packet + sizeof(tlv_type) + sizeof(tlv_length) << endl;
+    if(servfd == 0) {
+      servfd = createConnection();
+      m_connectionMap[clntfd] = servfd;
+    }
 
-  Interest recvInterest;
-  recvInterest.setNameSize(length.getNameLength());
-  recvInterest.setInterest(packet, length.getNameLength());
-  recvInterest.showInterestData();
-  
-  addInterestInformation(recvInterest, shost_mac);
-
-/*
-  showInterestInformation();
-
-  unsigned char tempBuffer[5000];
-  memset(tempBuffer, '1', sizeof(tempBuffer));
-
-  std::cout << "before" << std::endl;
-  std::cout << tempBuffer << std::endl;
-  sendData(123,
-          tempBuffer,
-          sizeof(tempBuffer));
-*/
+    send(servfd, data.c_str(), data.length(), 0);
+  }
 }
 
 inline unordered_map<int, struct event*>*

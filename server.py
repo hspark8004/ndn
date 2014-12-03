@@ -19,9 +19,9 @@ while True:
         break;
       print("Server Receive: " + data)
       conn.sendall(data)
-      print("Send all data" + data);
+      sleep(1)
+      print("Send all data: " + data);
     except SocketError as e:
-      print("Server error.")
       break
   print("Server closed.")
   conn.close()

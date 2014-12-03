@@ -1,6 +1,6 @@
 #include "NdnLayer.hpp"
 #include "Common.hpp"
-
+#include "face/TcpReceiverFace.hpp"
 
 NdnLayer::NdnLayer() {
     std::cout << "NdnLayer Constructor" << std::endl;
@@ -93,6 +93,33 @@ NdnLayer::recvInterestPacket(unsigned char* packet, tlv_length length, uint8_t* 
     addInterestInformation(recvInterest, shost_mac);
     showInterestInformation();
 
+  char* cname = new char[recvInterest.getNameSize() + 1];
+  strncpy(cname, recvInterest.getName(), recvInterest.getNameSize());
+  cname[recvInterest.getNameSize()] = 0;
+
+  string name(cname);
+  string prefix = getPrefix(name);
+  string data = urlDecode(getData(name));
+  string fd = getData(prefix);
+  prefix = getPrefix(prefix);
+
+  cout << "Prefix: " << prefix << endl;
+  cout << "Data: " << data << endl;
+  cout << "FD: " << fd << endl;
+
+  auto serverMap = container->getServerConnectionMap();
+
+  for(auto iter = serverMap->begin(); iter != serverMap->end(); iter++) {
+    TcpReceiverFace* face = (TcpReceiverFace*)iter->second;
+
+    cout << "Face: " << face->getName() << endl;
+
+    if(prefix.compare(face->getName()) == 0) {
+      face->onReceiveInterest(atoi(fd.c_str()), data);
+    }
+  }
+
+/*
     if(isCorrectDest(recvInterest)) {
         std::cout << "CorrectDest" << std::endl;
         unsigned char tempBuffer[5000];
@@ -100,13 +127,14 @@ NdnLayer::recvInterestPacket(unsigned char* packet, tlv_length length, uint8_t* 
 
         std::cout << "before" << std::endl;
         std::cout << tempBuffer << std::endl;
-        sendData(123, /* server Fd */
+        sendData(123,
                 tempBuffer,
                 sizeof(tempBuffer));
 
     } else {
         std::cout << "Not Correct Dest" << std::endl;
     }
+*/
 }
 
 
