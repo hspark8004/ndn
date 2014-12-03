@@ -115,7 +115,7 @@ NdnLayer::recvInterestPacket(unsigned char* packet, tlv_length length, uint8_t* 
     cout << "Face: " << face->getName() << endl;
 
     if(prefix.compare(face->getName()) == 0) {
-      face->onReceiveInterest(atoi(fd.c_str()), data);
+      face->onReceiveInterest(atoi(fd.c_str()), data, shost_mac);
     }
   }
 

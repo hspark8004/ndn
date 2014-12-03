@@ -40,6 +40,8 @@ EthernetLayer::Initializing_pcap() {
        // get NetworkDevice Name;
        spNetDevName = pcap_lookupdev(pcap_errbuf);
 
+  cout << "Device Name: " << spNetDevName << endl;
+
        if(spNetDevName == 0) {
            std::cout << "NetworkDevice 가져오기 실패!" << std::endl;
            printf("errbuf : [%s]\n", pcap_errbuf);
@@ -182,6 +184,8 @@ EthernetLayer::sendData(int serverFd, unsigned char* data, uint64_t size)
     memcpy(ether.ether_shost, source_mac_addr, sizeof(ether.ether_shost));
 
     ReqInformation* req = getInterestInformation(serverFd);
+
+    showInterestInformation();
     if( req == NULL ) {
         std::cout << "Not Correct Information : " << serverFd << std::endl;
         return -1;
