@@ -25,7 +25,8 @@ class EthernetLayer {
 
         struct pcap_pkthdr header; /* The header that pcap gives us */
         unsigned char* recvPacket; /* The actual packet */
-
+    
+        char* spNetDevName;
     public : 
         EthernetLayer();
         EthernetLayer(Container* container);

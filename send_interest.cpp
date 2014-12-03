@@ -26,9 +26,9 @@ int main(int argc, const char* argv[])
         exit(1);
     }
 
-  evthread_use_pthreads();
-  event_enable_debug_mode();
-  eventBase = event_base_new();
+    evthread_use_pthreads();
+    event_enable_debug_mode();
+    eventBase = event_base_new();
 
     char* comName = new char[strlen(argv[1])];
     strcpy(comName, argv[1]);

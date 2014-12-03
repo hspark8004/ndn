@@ -26,11 +26,11 @@ Interest::setName(char* _name)
 {
     std::cout << "void Interest::setName(char* _name)" << std::endl;
     
-    int length = strlen(_name);
+//    int length = strlen(_name);
     
-    m_name = new char[length];
-
+    m_name = new char[strlen(_name) + 1];
     strcpy(m_name, _name);
+    m_name[strlen(_name)] = '\0';
 }
 
 // the name of Interest means computer name and request data name
@@ -55,11 +55,12 @@ Interest::extractComName() {
         if(checkCount == 2)
             break;
     }
-    char* comName = new char[cutIdx];
+    char* comName = new char[cutIdx + 1];
     
     for(int i=0; i<cutIdx; i++) {
         comName[i] = getName()[i];
     }
+    comName[cutIdx] = '\0';
     return comName;
 }
 
@@ -179,10 +180,7 @@ unsigned char*
 Interest::getByte() {
     unsigned char data[size()];
 
-    memcpy(data, m_name, getNameSize());
-
-
-    
+    memcpy(data, m_name, getNameSize());    
 
     memcpy(data + getNameSize(), &m_selector, sizeof(m_selector));
     memcpy(data + getNameSize() + sizeof(m_selector), &m_scope, sizeof(m_scope));

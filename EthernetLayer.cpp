@@ -19,7 +19,6 @@ EthernetLayer::EthernetLayer(Container* container) {
     pthread_t p_thread;
     int thread_id;
     thread_id = pthread_create( &p_thread, NULL, EthernetLayer::receive, this );
-   
 }
 
 Container*
@@ -27,6 +26,8 @@ EthernetLayer::getContainer() {
     return container;
 }
 
+
+// pcap 초기화 함수
 int
 EthernetLayer::Initializing_pcap() {
     std::cout << "ethernetLayer::Initializing_pcap()" << std::endl;
@@ -36,7 +37,18 @@ EthernetLayer::Initializing_pcap() {
        char pcap_errbuf[PCAP_ERRBUF_SIZE];
        pcap_errbuf[0] = '\0';
 
-       pcap_handle = pcap_open_live("wlan0", BUFSIZ, 0,1000, pcap_errbuf);
+       // get NetworkDevice Name;
+       spNetDevName = pcap_lookupdev(pcap_errbuf);
+
+       if(spNetDevName == 0) {
+           std::cout << "NetworkDevice 가져오기 실패!" << std::endl;
+           printf("errbuf : [%s]\n", pcap_errbuf);
+           return -2;
+       }
+       std::cout << "spNetDeviceName : " << spNetDevName << std::endl;
+
+
+       pcap_handle = pcap_open_live(spNetDevName, BUFSIZ, 0,1000, pcap_errbuf);
 
        if(pcap_errbuf[0] != '\0') {
           fprintf(stderr, "%s\n", pcap_errbuf);
@@ -56,9 +68,9 @@ EthernetLayer::sendInterest(unsigned char* data, uint64_t size) {
 
     struct ether_header ether;
 
-    ether.ether_type = NDN;
+    ether.ether_type = NDN;     // NDN == 10000
     
-    const unsigned char* source_mac_addr = getMacAddress("wlan0");
+    const unsigned char* source_mac_addr = getMacAddress(spNetDevName);
     memcpy(ether.ether_shost, source_mac_addr, sizeof(ether.ether_shost));
     memset(ether.ether_dhost, 0xff, sizeof(ether.ether_dhost));
 
@@ -87,6 +99,7 @@ EthernetLayer::send(unsigned char* data, uint64_t size) {
             std::cout << "==============================================\n" << std::endl;
 
         }
+        return 1;
     }
 }
 unsigned char*
@@ -113,7 +126,6 @@ EthernetLayer::getMacAddress(char* interface_name)
     }
 
     if(ioctl(fd, SIOCGIFHWADDR, &ifr) == -1) {
-      perror("ioctl");
         fprintf(stderr, "SIOCGIFHWADDR error\n");
         perror(0);
         close(fd);
@@ -134,14 +146,16 @@ EthernetLayer::receive(void * arg) {
     EthernetLayer* pThis = ((EthernetLayer*)arg);
     printf("\n  [Thread] receive Thread is create \n");
     
-   	//sleep(5000);
 	printf("------------ try receive ---------------\n");
 
 
     while(1) {
 	    ether_header ehP;
         pThis->recvPacket = (unsigned char*)pcap_next(pThis->pcap_handle, &pThis->header);
-    if(pThis->recvPacket == NULL) continue;
+
+        if(pThis->recvPacket == NULL)
+            continue;
+
 		memcpy(&ehP, pThis->recvPacket, sizeof(ether_header));
 
         switch(ehP.ether_type)
@@ -162,9 +176,9 @@ EthernetLayer::sendData(int serverFd, unsigned char* data, uint64_t size)
     std::cout << "int EthernetLayer::sendData(unsigned char* data, uint64_t size)" << std::endl;
 
     struct ether_header ether;
-    ether.ether_type = NDN;
+    ether.ether_type = NDN;         // NDN = 10000;
 
-    const unsigned char* source_mac_addr = getMacAddress("wlan0");
+    const unsigned char* source_mac_addr = getMacAddress(spNetDevName);
     memcpy(ether.ether_shost, source_mac_addr, sizeof(ether.ether_shost));
 
     ReqInformation* req = getInterestInformation(serverFd);

@@ -20,16 +20,18 @@ Data::~Data() {
 
 void
 Data::setName(char* _name) {
-    m_name = new char[strlen(_name)];
+    m_name = new char[strlen(_name) + 1];
     strcpy(m_name, _name);
+    m_name[strlen(_name)] = '\0';
 }
 
 void
 Data::setName(char* _name, uint16_t name_length) {
-    m_name = new char[name_length];
+    m_name = new char[name_length + 1];
 
     for(int i=0; i<name_length; i++)
         m_name[i] = _name[i];
+    m_name[name_length] = '\0';
 }
 void
 Data::setMetaInfo(MetaInfo m) {
