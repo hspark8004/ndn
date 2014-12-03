@@ -167,8 +167,19 @@ TcpSenderFace::onReadSocket(evutil_socket_t fd, short events, void* arg)
 }
 
 void
-TcpSenderFace::onReceiveData(char* name, char* data, size_t size)
+TcpSenderFace::onReceiveData(char* name, unsigned char* data, size_t size)
 {
+    cout << "TcpSenderFace::onReceiveData" << endl;
+
+    string str(name);
+    string PrefixName = getPrefix(str); // name
+    string fd = getData(str);           // client fd
+
+    int clntfd = stoi(fd);              // casting
+    //sprintf(clntfd, "%s", fd);
+
+    send(clntfd, data, size, 0);
+    
 }
 
 void

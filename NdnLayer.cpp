@@ -1,6 +1,7 @@
 #include "NdnLayer.hpp"
 #include "Common.hpp"
 #include "face/TcpReceiverFace.hpp"
+#include "face/TcpSenderFace.hpp"
 
 NdnLayer::NdnLayer() {
     std::cout << "NdnLayer Constructor" << std::endl;
@@ -150,6 +151,15 @@ NdnLayer::recvDataPacket(unsigned char* packet, tlv_length length) {
     std::cout << "data name : " << recvData.getName() << std::endl;
     std::cout << "data com name : " << recvData.extractComName() << std::endl;
     std::cout << "data dest fd : " << recvData.extractAppName() << std::endl;
+
+//    TcpSenderFace* face = (*getContainer()->getClientConnectionMap())[recvData.extractAppName()];
+    auto face = getContainer()->getClientConnectionMap()->find(recvData.extractAppName());
+    if(face == getContainer()->getClientConnectionMap()->end()) {
+        std::cout << "Not Found client fd" << std::endl;
+        return;
+    }
+    ((TcpSenderFace*)(face->second))->onReceiveData(recvData.getName(), recvData.getContent(), recvData.getContentSize());
+
 }
 
 bool

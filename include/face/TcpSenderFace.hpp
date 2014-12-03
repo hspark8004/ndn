@@ -18,7 +18,7 @@ public:
   ~TcpSenderFace();
   static void onAcceptSocket(evutil_socket_t fd, short events, void* arg);
   static void onReadSocket(evutil_socket_t fd, short events, void* arg);
-  void onReceiveData(char* name, char* data, size_t size);
+  void onReceiveData(char* name, unsigned char* data, size_t size);
   void sendInterest(int fd, char* name, uint64_t len);
   unordered_map<int, struct event*>* getSocketEventMap();
   Container* getContainer() { return p_container; }

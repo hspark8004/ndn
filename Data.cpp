@@ -229,7 +229,7 @@ Data::extractComName() {
     return comName;
 }
 
-char*
+int
 Data::extractAppName() {
     int size = getNameSize();
 
@@ -247,7 +247,7 @@ Data::extractAppName() {
     for(int i=0; i<arrSize; i++)
         appName[i] = getName()[cutIdx + 1 + i];
 
-    return appName;
+    return atoi(appName);
 }
 
 void

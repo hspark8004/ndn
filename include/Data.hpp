@@ -60,7 +60,7 @@ class Data {
 
         // ex) org/secmem/gn/a
         char* extractComName();
-        char* extractAppName();
+        int extractAppName();
 
         void appendName(int number);
 };
