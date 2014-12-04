@@ -101,6 +101,21 @@ TcpSenderFace::onAcceptSocket(evutil_socket_t fd, short events, void* arg)
   (*pThis->getSocketEventMap())[clntfd] = e;
 
   pThis->getContainer()->getClientConnectionMap()->insert({clntfd, pThis});
+
+  // TODO send Interest for connection.
+  string _name(pThis->getName());
+  _name = _name.append("/").append(to_string(clntfd));
+
+  tlv_type tlvType(1);
+  tlv_length tlvLength(_name.size(), 0);
+
+  char* name = new char[sizeof(tlv_type) + sizeof(tlv_length) + _name.size() + 1];
+  memcpy(name, &tlvType, sizeof(tlv_type));
+  memcpy(name + sizeof(tlv_type), &tlvLength, sizeof(tlv_length));
+  copy(_name.begin(), _name.end(), name + sizeof(tlv_type) + sizeof(tlv_length));
+  _name[sizeof(tlv_type) + sizeof(tlv_length) + _name.size()] = '\0';
+
+  pThis->sendInterest(clntfd, name, sizeof(tlv_type) + sizeof(tlv_length) + _name.size());
 }
 
 void
