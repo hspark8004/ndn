@@ -16,6 +16,28 @@
 
 using namespace std;
 
+static pair<unsigned char*, int>
+parseData(Data* DataStruct)
+{
+  unsigned char* buf;
+  int len;
+  tlv_length tlvLength(DataStruct->getNameSize(), DataStruct->getContentSize());
+  tlv_type tlvType(2);
+
+  len = sizeof(tlv_type) + sizeof(tlv_length) + DataStruct->getSize();
+
+  buf = new unsigned char[len + 1];
+
+  memcpy(buf, &tlvType, sizeof(tlv_type));
+  memcpy(buf + sizeof(tlv_type), &tlvLength, sizeof(tlv_length));
+  memcpy(buf + sizeof(tlv_type) + sizeof(tlv_length), DataStruct->getByte(),
+    DataStruct->getSize());
+
+  buf[len] = 0;
+
+  return pair<unsigned char*, int>(buf, len);
+}
+
 TcpReceiverFace::TcpReceiverFace(Container* container, string name, int port)
   : p_container(container), m_name(name), m_port(port)
 {
@@ -30,17 +52,15 @@ TcpReceiverFace::~TcpReceiverFace()
   for(auto iter = p_socketEventMap->begin(); iter != p_socketEventMap->end(); iter++) {
     event_free(iter->second);
     close(iter->first);
-
     p_socketEventMap->erase(iter);
   }
 }
 
 int
-TcpReceiverFace::createConnection()
+TcpReceiverFace::createSocketEvent()
 {
-  struct event* e;
   struct sockaddr_in servaddr;
-  socklen_t addrlen = sizeof(servaddr);
+  struct event* e;
   int clntfd;
   int ret;
 
@@ -53,9 +73,8 @@ TcpReceiverFace::createConnection()
   servaddr.sin_addr.s_addr = inet_addr("127.0.0.1");
   servaddr.sin_port = htons(m_port);
 
-  if((ret = connect(clntfd, (struct sockaddr*)&servaddr, addrlen)) < 0) {
+  if((ret = connect(clntfd, (struct sockaddr*)&servaddr, sizeof(servaddr))) < 0) {
     throw runtimeError(&errno);
-    // return -1; // Fail to connect legacy server.
   }
 
   e = event_new(eventBase, clntfd, EV_READ | EV_PERSIST,
@@ -71,114 +90,83 @@ TcpReceiverFace::createConnection()
 }
 
 void
+TcpReceiverFace::removeSocketEvent(int fd)
+{
+  struct event* e = (*p_socketEventMap)[fd];
+
+  close(fd);
+  event_free(e);
+  p_socketEventMap->erase(fd);
+}
+
+void
 TcpReceiverFace::onReadSocket(evutil_socket_t fd, short events, void* arg)
 {
   TcpReceiverFace* pThis = (TcpReceiverFace*)arg;
+  unordered_map<int, int>* p_connectionMap = pThis->getConnectionMap();
   char buf[BUFSIZ];
-  ssize_t len = recv(fd, buf, BUFSIZ, 0);
-  string data(buf, len);
-  string prefix(pThis->getName());
+  ssize_t len;
+  int clntfd;
 
-  sprintf(buf, "%d", fd); // Get file descriptor.
-  prefix.append("/").append(buf); // Append file descriptor.
-
-  cout << "READ!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!" << endl;
-
-  if(len == 0) {
-    auto socketEventMap = pThis->getSocketEventMap();
-
-    event_free((*socketEventMap)[fd]);
-    close(fd);
-    socketEventMap->erase(fd);
-
+  if((len = recv(fd, buf, BUFSIZ, 0)) == 0) {
+    pThis->removeSocketEvent(fd);
     return;
   }
 
-  int clntfd = 0;
-  auto connMap = pThis->getConnectionMap();
-
-  for(auto iter = connMap->begin(); iter != connMap->end(); iter++) {
+  for(auto iter = p_connectionMap->begin(); iter != p_connectionMap->end(); iter++) {
     if(fd == iter->second) {
       clntfd = iter->first;
-      break;
+
+      string name = pThis->getName().append("/").append(to_string(clntfd));
+      string data = string(buf, len);
+
+      Data dataPacket(const_cast<char*>(name.c_str()),
+        reinterpret_cast<unsigned char*>(const_cast<char*>(data.c_str())), data.length());
+
+      pair<unsigned char*, int> ret = parseData(&dataPacket);
+      pThis->getContainer()->getLinkLayer()->sendData(clntfd, ret.first, ret.second);
+
+      return;
     }
   }
-
-  if(clntfd == 0) {
-    cout << "No mapping socket..." << endl;
-    return;
-  }
-
-  string s_name(pThis->getName());
-  len = sprintf(buf, "%d", clntfd);
-  s_name = s_name.append("/").append(buf, len);
-
-  char* name = new char[s_name.length() + 1];
-  copy(s_name.begin(), s_name.end(), name);
-  name[s_name.length()] = 0;
-
-  unsigned char* s_data = new unsigned char[data.length() + 1];
-  copy(data.begin(), data.end(), s_data);
-  s_data[data.length()] = 0;
-
-  Data DataStruct(name, s_data, data.length());
-
-  std::cout << "Data content Size : " << DataStruct.getContentSize() << std::endl;
-  std::cout << "Data Name : " << DataStruct.getName() << std::endl;
-  std::cout << "Data NameSize : " << DataStruct.getNameSize() << std::endl;
-
-  DataStruct.showData();
-
-  tlv_length tlvLength(DataStruct.getNameSize(), DataStruct.getContentSize());
-  tlv_type tlvType(2);
-
-  unsigned char buffer[sizeof(tlv_type) + sizeof(tlv_length) + DataStruct.getSize()];
-
-  memcpy(buffer, &tlvType, sizeof(tlv_type));
-  memcpy(buffer + sizeof(tlv_type), &tlvLength, sizeof(tlv_length));
-  memcpy(buffer + sizeof(tlv_type) + sizeof(tlv_length), DataStruct.getByte(), DataStruct.getSize());
-    
-  pThis->getContainer()->getLinkLayer()->sendData(clntfd, buffer, sizeof(buffer));
 }
 
 void
 TcpReceiverFace::onReceiveInterest(int clntfd, string data, uint8_t* shost_mac)
 {
-  cout << "DDDDDDDDDData: " << data << endl;
   int servfd = (*p_connectionMap)[clntfd];
 
-  cout << "RECV: " << servfd << endl;
+  if((data.length() == 0) && (servfd > 0)) { // Receive close message and socket exists.
+    removeSocketEvent(servfd);
 
-  if(data.length() == 0) {
-    cout << "RECV: data length =0" << servfd << endl;
-    if(servfd > 0) {
-      cout << "RECV:  close gfogogogogo" << servfd << endl;
-      p_connectionMap->erase(clntfd);
-      close(servfd);
-    }
-  } else {
-    cout << "RECV: datalength: " << data.length() << endl;
-    cout << "SERV: " << servfd << endl;
-
-    if(servfd == 0) {
-      servfd = createConnection();
-
-      cout << "RECV: datalewersefwaefawefaewfangth: " << servfd << endl;
-
-      for(auto iter = rib.begin(); iter != rib.end(); iter++) {
-        auto info = iter;
-
-        if((*shost_mac == *info->getMacAddress())
-          && (clntfd == info->getClientFd())) {
-          info->setServerFd(servfd);
-          break;
-        }
+    for(auto iter = rib.begin(); iter != rib.end(); iter++) {
+      if((*shost_mac == *iter->getMacAddress()) && (clntfd == iter->getClientFd())) {
+        rib.erase(iter);
+        break;
       }
-
-      (*p_connectionMap)[clntfd] = servfd;
-      (*p_container->getServerConnectionMap())[clntfd] = this;
     }
 
+    p_connectionMap->erase(clntfd);
+    p_container->getServerConnectionMap()->erase(clntfd);
+
+    return;
+  }
+
+  if(servfd == 0) { // Receive connect message, or Socket and Event is empty.
+    servfd = createSocketEvent();
+
+    for(auto iter = rib.begin(); iter != rib.end(); iter++) {
+      if((*shost_mac == *iter->getMacAddress()) && (clntfd == iter->getClientFd())) {
+        iter->setServerFd(servfd);
+        break;
+      }
+    }
+
+    (*p_connectionMap)[clntfd] = servfd;
+    (*p_container->getServerConnectionMap())[clntfd] = this;
+  }
+
+  if(data.length() > 0) { // Receive data.
     send(servfd, data.c_str(), data.length(), 0);
   }
 }

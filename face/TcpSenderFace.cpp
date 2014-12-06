@@ -18,13 +18,53 @@
 
 using namespace std;
 
+static char*
+makeInterest(string name, int* len)
+{
+  tlv_type type(1);
+  tlv_length length(name.size(), 0);
+
+  char* packet = new char[sizeof(type) + sizeof(length) + name.size() + 1];
+  memcpy(packet, &type, sizeof(type));
+  memcpy(packet + sizeof(type), &length, sizeof(length));
+  copy(name.begin(), name.end(), packet + sizeof(type) + sizeof(length));
+  packet[sizeof(type) + sizeof(length) + name.size()] = 0;
+
+  *len = sizeof(type) + sizeof(length) + name.size();
+
+  return packet;
+}
+
 TcpSenderFace::TcpSenderFace(Container* container, string name, int port)
   : p_container(container), m_name(name), m_port(port)
 {
+  struct sockaddr_in servaddr;
+
   p_socketEventMap = new unordered_map<int, struct event*>;
 
-  initSocket();
-  initEvent();
+  if((m_servfd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP)) < 0) {
+    throw runtimeError(&errno);
+  }
+
+  memset(&servaddr, 0, sizeof(servaddr));
+  servaddr.sin_family = AF_INET;
+  servaddr.sin_addr.s_addr = htons(INADDR_ANY);
+  servaddr.sin_port = htons(m_port);
+
+  if(bind(m_servfd, (struct sockaddr*)&servaddr, sizeof(servaddr)) < 0) {
+    throw runtimeError(&errno);
+  }
+
+  if(listen(m_servfd, m_backlog) < 0) {
+    throw runtimeError(&errno);
+  }
+
+  p_event = event_new(eventBase, m_servfd, EV_READ | EV_PERSIST,
+    TcpSenderFace::onAcceptSocket, (void*)this);
+
+  if(event_add(p_event, NULL) < 0) {
+    throw runtimeError(&errno);
+  }
 }
 
 TcpSenderFace::~TcpSenderFace()
@@ -43,40 +83,6 @@ TcpSenderFace::~TcpSenderFace()
   close(m_servfd);
 }
 
-inline void
-TcpSenderFace::initSocket()
-{
-  if((m_servfd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP)) < 0) {
-    throw runtimeError(&errno);
-  }
-
-  memset(&m_servaddr, 0, sizeof(m_servaddr));
-  m_servaddr.sin_family = AF_INET;
-  m_servaddr.sin_addr.s_addr = htons(INADDR_ANY);
-  m_servaddr.sin_port = htons(m_port);
-
-  m_addrlen = sizeof(m_servaddr);
-
-  if(bind(m_servfd, (struct sockaddr*)&m_servaddr, m_addrlen) < 0) {
-    throw runtimeError(&errno);
-  }
-
-  if(listen(m_servfd, m_backlog) < 0) {
-    throw runtimeError(&errno);
-  }
-}
-
-inline void
-TcpSenderFace::initEvent()
-{
-  p_event = event_new(eventBase, m_servfd, EV_READ | EV_PERSIST,
-    TcpSenderFace::onAcceptSocket, (void*)this);
-
-  if(event_add(p_event, NULL) < 0) {
-    throw runtimeError(&errno);
-  }
-}
-
 void
 TcpSenderFace::onAcceptSocket(evutil_socket_t fd, short events, void* arg)
 {
@@ -84,12 +90,11 @@ TcpSenderFace::onAcceptSocket(evutil_socket_t fd, short events, void* arg)
   struct sockaddr_in clntaddr;
   socklen_t addrlen = sizeof(clntaddr);
   int clntfd;
+  int len;
 
   if((clntfd = accept(fd, (struct sockaddr*)&clntaddr, &addrlen)) < 0) {
     throw runtimeError(&errno);
   }
-
-  cout << "Accept: " << clntfd << endl;
 
   struct event* e = event_new(eventBase, clntfd, EV_READ | EV_PERSIST,
     TcpSenderFace::onReadSocket, arg);
@@ -102,53 +107,25 @@ TcpSenderFace::onAcceptSocket(evutil_socket_t fd, short events, void* arg)
 
   pThis->getContainer()->getClientConnectionMap()->insert({clntfd, pThis});
 
-  // TODO send Interest for connection.
-  string _name(pThis->getName());
-  _name = _name.append("/").append(to_string(clntfd));
-
-  tlv_type tlvType(1);
-  tlv_length tlvLength(_name.size(), 0);
-
-  char* name = new char[sizeof(tlv_type) + sizeof(tlv_length) + _name.size() + 1];
-  memcpy(name, &tlvType, sizeof(tlv_type));
-  memcpy(name + sizeof(tlv_type), &tlvLength, sizeof(tlv_length));
-  copy(_name.begin(), _name.end(), name + sizeof(tlv_type) + sizeof(tlv_length));
-  _name[sizeof(tlv_type) + sizeof(tlv_length) + _name.size()] = '\0';
-
-  pThis->sendInterest(clntfd, name, sizeof(tlv_type) + sizeof(tlv_length) + _name.size());
+  char* interest = makeInterest(pThis->getName().append("/").append(to_string(clntfd)).append("/"), &len);
+  pThis->sendInterest(clntfd, interest, len);
 }
 
 void
 TcpSenderFace::onReadSocket(evutil_socket_t fd, short events, void* arg)
 {
-  cout << "Read File: " << fd << endl;
-
   TcpSenderFace* pThis = (TcpSenderFace*)arg;
   char buf[BUFSIZ];
-  ssize_t len = recv(fd, buf, BUFSIZ, 0);
-  string data(buf, len); // data after name.
-  string prefix(pThis->getName());
+  char *packet;
+  ssize_t ret;
+  int len;
 
-  sprintf(buf, "%d", fd); // Get file descriptor.
-  prefix = prefix.append("/").append(buf); // Append file descriptor.
-  tlv_type tlvType(1);
-
-  if(len == 0) { // Gracefully closed.
+  if((ret = recv(fd, buf, BUFSIZ, 0)) == 0) { // Gracefully closed.
     auto socketEventMap = pThis->getSocketEventMap();
 
     // Send close packet.
-    data = prefix.append("/");
-    tlv_length tlvLength(data.size(), 0);
-
-    char* name = new char[sizeof(tlv_type) + sizeof(tlv_length) + data.size() + 1];
-    memcpy(name, &tlvType, sizeof(tlv_type));
-    memcpy(name + sizeof(tlv_type), &tlvLength, sizeof(tlv_length));
-    copy(data.begin(), data.end(), name + sizeof(tlv_type) + sizeof(tlv_length));
-    name[sizeof(tlv_type) + sizeof(tlv_length) + data.size()] = '\0';
-
-    cout << "Name Length: " << tlvLength.getNameLength() << endl;
-    cout << "Close pakcet: " << name + sizeof(tlv_type) + sizeof(tlv_length) << endl;
-    pThis->sendInterest(fd, name, sizeof(tlv_type) + sizeof(tlv_length) + data.size());
+    packet = makeInterest(pThis->getName().append("/").append(to_string(fd)).append("/"), &len);
+    pThis->sendInterest(fd, packet, len);
 
     event_free((*socketEventMap)[fd]);
     close(fd);
@@ -157,44 +134,19 @@ TcpSenderFace::onReadSocket(evutil_socket_t fd, short events, void* arg)
     return;
   }
 
-  data = prefix.append("/").append(urlEncode(data));
-  tlv_length tlvLength(data.size(), 0);
-
-  char* name = new char[sizeof(tlv_type) + sizeof(tlv_length) + data.size() + 1];
-  memcpy(name, &tlvType, sizeof(tlv_type));
-  memcpy(name + sizeof(tlv_type), &tlvLength, sizeof(tlv_length));
-  copy(data.begin(), data.end(), name + sizeof(tlv_type) + sizeof(tlv_length));
-  name[sizeof(tlv_type) + sizeof(tlv_length) + data.size()] = '\0';
-
-  cout << "Name Length: " << tlvLength.getNameLength() << endl;
-  cout << "Data: " << name + sizeof(tlv_type) + sizeof(tlv_length) << endl;
-  pThis->sendInterest(fd, name, sizeof(tlv_type) + sizeof(tlv_length) + data.size());
-
-/*
-  cout << "Data: " << data << endl;
-  cout << "Prefix: " << prefix << endl;
-  cout <<  << endl;
-  Interest interest(prefix.append("/").append(urlEncode(data))); // Append data.
-  cout << "Send pakcet: " << interest.getName() << endl;
-  // pThis->sendInterest(interest.getName().c_str(), interest.getName().length());
-  pThis->sendInterest(fd, interest.getName(), strlen(interest.getName()) + len);
-*/
+  // Send interest packet.
+  packet = makeInterest(pThis->getName().append("/").append(to_string(fd)).append("/").append(buf, ret), &len);
+  pThis->sendInterest(fd, packet, len);
 }
 
 void
-TcpSenderFace::onReceiveData(char* name, unsigned char* data, size_t size)
+TcpSenderFace::onReceiveData(char* _name, unsigned char* buf, size_t len)
 {
-    cout << "TcpSenderFace::onReceiveData" << endl;
+    string name(_name);
+    string prefix = getPrefix(name);
+    int clntfd = stoi(getData(name));
 
-    string str(name);
-    string PrefixName = getPrefix(str); // name
-    string fd = getData(str);           // client fd
-
-    int clntfd = stoi(fd);              // casting
-    //sprintf(clntfd, "%s", fd);
-
-    send(clntfd, data, size, 0);
-    
+    send(clntfd, buf, len, 0);
 }
 
 void

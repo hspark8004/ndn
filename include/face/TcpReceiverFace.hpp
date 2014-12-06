@@ -15,7 +15,8 @@ class TcpReceiverFace : public Face
 public:
   TcpReceiverFace(Container* container, string name, int port);
   ~TcpReceiverFace();
-  int createConnection();
+  int createSocketEvent();
+  void removeSocketEvent(int fd);
   static void onReadSocket(evutil_socket_t fd, short events, void* arg);
   void onReceiveInterest(int fd, string data, uint8_t* shost_mac);
   unordered_map<int, struct event*>* getSocketEventMap();

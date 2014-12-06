@@ -104,6 +104,7 @@ NdnLayer::recvInterestPacket(unsigned char* packet, tlv_length length, uint8_t* 
   string fd = getData(prefix);
   prefix = getPrefix(prefix);
 
+  cout << "Name : " << name << endl;
   cout << "Prefix: " << prefix << endl;
   cout << "Data: " << data << endl;
   cout << "FD: " << fd << endl;

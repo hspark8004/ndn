@@ -29,15 +29,11 @@ public:
   void setRecvSocket(int fd);
 #endif /* __DEBUG_MODE */
 private:
-  void initSocket();
-  void initEvent();
   const int m_backlog = 100;
   Container* p_container;
   struct event* p_event;
   unordered_map<int, struct event*>* p_socketEventMap;
-  struct sockaddr_in m_servaddr;
   string m_name;
-  socklen_t m_addrlen;
   int m_servfd;
   int m_port;
 #ifdef __DEBUG_MODE

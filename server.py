@@ -18,7 +18,8 @@ while True:
         print("Server has not data")
         break;
       print("Server Receive: " + data)
-      conn.sendall(data)
+#      conn.sendall(data)
+      conn.sendall("Jo Young-Min makes a pizza!! ( > O < )")
       sleep(1)
       print("Send all data: " + data);
     except SocketError as e:

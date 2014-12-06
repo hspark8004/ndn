@@ -151,3 +151,23 @@ getInterestInformation(int serverFd)
 
   return NULL;
 }
+
+char*
+toCharArray(string str)
+{
+  char* ret = new char[str.length() + 1];
+  copy(str.begin(), str.end(), ret);
+  ret[str.length()] = 0;
+
+  return ret;
+}
+
+unsigned char*
+toUnsignedCharArray(string str)
+{
+  unsigned char* ret = new unsigned char[str.length() + 1];
+  copy(str.begin(), str.end(), ret);
+  ret[str.length()] = 0;
+
+  return ret;
+}

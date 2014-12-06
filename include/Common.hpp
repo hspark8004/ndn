@@ -6,6 +6,7 @@
 #include <vector>
 #include "face/Face.hpp"
 #include "ReqInformation.hpp"
+#include "Data.hpp"
 
 //#define __DEBUG_MODE
 
@@ -21,6 +22,10 @@ string getData(string name);
 
 string urlEncode(string str);
 string urlDecode(string str);
+
+char* toCharArray(string str);
+unsigned char* toUnsignedCharArray(string str);
+unsigned char* prependTypeLengthValue();
 
 void addInterestInformation(Interest interest, uint8_t* shost_mac);
 void showInterestInformation();
