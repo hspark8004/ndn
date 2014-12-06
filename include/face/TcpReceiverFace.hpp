@@ -24,6 +24,8 @@ public:
   virtual string getName();
   virtual int getType();
   Container* getContainer() { return p_container; };
+  uint64_t* getDataIndex() { return p_dataIndex; };
+  void setDataIndex(uint64_t idx) { *p_dataIndex = idx; }
 #ifdef __DEBUG_MODE
   static void onTest(evutil_socket_t fd, short events, void* arg);
   void setSendSocket(int fd);
@@ -33,6 +35,7 @@ public:
 private:
   Container* p_container;
   struct event_base* m_eventBase;
+  uint64_t* p_dataIndex;
   unordered_map<int, struct event*>* p_socketEventMap;
   unordered_map<int, int>* p_connectionMap;
   string m_name;

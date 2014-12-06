@@ -3,6 +3,7 @@
 #include <string>
 #include <unordered_map>
 #include <utility>
+#include <tuple>
 #include "face/Face.hpp"
 #include "Common.hpp"
 #include "Interest.hpp"
@@ -22,6 +23,8 @@ public:
   void sendInterest(int fd, char* name, uint64_t len);
   unordered_map<int, struct event*>* getSocketEventMap();
   Container* getContainer() { return p_container; }
+  vector<tuple<uint64_t, unsigned char*, size_t>> getDataList();
+  uint64_t getDataIndex();
   virtual string getName();
   virtual int getType();
 #ifdef __DEBUG_MODE
@@ -33,6 +36,8 @@ private:
   Container* p_container;
   struct event* p_event;
   unordered_map<int, struct event*>* p_socketEventMap;
+  vector<tuple<uint64_t, unsigned char*, size_t>> m_dataList;
+  uint64_t m_dataIndex = 1;
   string m_name;
   int m_servfd;
   int m_port;

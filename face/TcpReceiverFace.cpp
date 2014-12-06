@@ -43,6 +43,7 @@ TcpReceiverFace::TcpReceiverFace(Container* container, string name, int port)
 {
   p_socketEventMap = new unordered_map<int, struct event*>;
   p_connectionMap = new unordered_map<int, int>;
+  p_dataIndex = new uint64_t(1);
 
   (*p_container->getServerConnectionMap())[serverFaceId++] = this;
 }
@@ -117,7 +118,10 @@ TcpReceiverFace::onReadSocket(evutil_socket_t fd, short events, void* arg)
     if(fd == iter->second) {
       clntfd = iter->first;
 
-      string name = pThis->getName().append("/").append(to_string(clntfd));
+      uint64_t index = *pThis->getDataIndex();
+      pThis->setDataIndex(index + 1);
+
+      string name = pThis->getName().append("/").append(to_string(clntfd)).append("/").append(to_string(index));
       string data = string(buf, len);
 
       Data dataPacket(const_cast<char*>(name.c_str()),

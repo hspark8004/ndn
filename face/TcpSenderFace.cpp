@@ -6,7 +6,10 @@
 #include <string.h>
 #include <pthread.h>
 #include <iostream>
+#include <algorithm>
 #include <iterator>
+#include <tuple>
+#include <vector>
 #include <utility>
 #include <unordered_map>
 #include "Common.hpp"
@@ -15,8 +18,11 @@
 #include "tlv_type.hpp"
 #include "tlv_length.hpp"
 #include <errno.h>
+#include <cctype>
 
 using namespace std;
+
+typedef tuple<uint64_t, unsigned char*, size_t> mytuple;
 
 static char*
 makeInterest(string name, int* len)
@@ -33,6 +39,12 @@ makeInterest(string name, int* len)
   *len = sizeof(type) + sizeof(length) + name.size();
 
   return packet;
+}
+
+static bool
+dataSort(const mytuple& a, const mytuple& b)
+{
+  return get<0>(a) < get<0>(b);
 }
 
 TcpSenderFace::TcpSenderFace(Container* container, string name, int port)
@@ -142,11 +154,32 @@ TcpSenderFace::onReadSocket(evutil_socket_t fd, short events, void* arg)
 void
 TcpSenderFace::onReceiveData(char* _name, unsigned char* buf, size_t len)
 {
-    string name(_name);
-    string prefix = getPrefix(name);
-    int clntfd = stoi(getData(name));
+  string name(_name);
+  string prefix = getPrefix(getPrefix(name));
+  int clntfd = stoi(getPrefix(prefix));
+  int index = stoi(getData(name));
 
+  // TODO process index
+  if(m_dataIndex == index) {
     send(clntfd, buf, len, 0);
+    m_dataIndex++;
+
+    delete buf;
+
+    // TODO process list
+    for(vector<mytuple>::iterator iter = m_dataList.begin(); iter != m_dataList.end(); iter++) {
+      if(m_dataIndex == get<0>(*iter)) {
+        send(clntfd, get<1>(*iter), get<2>(*iter), 0);
+        m_dataIndex++;
+
+        delete get<1>(*iter);
+      }
+    }
+  } else if(index > m_dataIndex) {
+    m_dataList.push_back(make_tuple(index, buf, len));
+
+    sort(m_dataList.begin(), m_dataList.end(), dataSort);
+  }
 }
 
 void
@@ -162,6 +195,18 @@ TcpSenderFace::sendInterest(int fd, char* name, uint64_t len)
     perror("send");
   }
 #endif /* __DEBUG_MODE */
+}
+
+inline vector<tuple<uint64_t, unsigned char*, size_t>>
+TcpSenderFace::getDataList()
+{
+  return m_dataList;
+}
+
+inline uint64_t
+TcpSenderFace::getDataIndex()
+{
+  return m_dataIndex;
 }
 
 inline unordered_map<int, struct event*>*
