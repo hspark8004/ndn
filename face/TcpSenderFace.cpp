@@ -159,8 +159,11 @@ TcpSenderFace::onReceiveData(char* _name, unsigned char* buf, size_t len)
 {
   string name(_name);
   string prefix = getPrefix(getPrefix(name));
-  string temp(getPrefix(prefix));
-  int clntfd = stoi(temp.substr(1, temp.size() - 1));
+  string temp(getData(getPrefix(name)));
+
+  cout << "temp : " << temp << endl;
+
+  int clntfd = stoi(temp);
   int index = stoi(getData(name));
 
   // TODO process index
@@ -168,7 +171,7 @@ TcpSenderFace::onReceiveData(char* _name, unsigned char* buf, size_t len)
     send(clntfd, buf, len, 0);
     m_dataIndex++;
 
-    delete buf;
+    //delete buf;
 
     // TODO process list
     for(vector<mytuple>::iterator iter = m_dataList.begin(); iter != m_dataList.end(); iter++) {
@@ -176,7 +179,7 @@ TcpSenderFace::onReceiveData(char* _name, unsigned char* buf, size_t len)
         send(clntfd, get<1>(*iter), get<2>(*iter), 0);
         m_dataIndex++;
 
-        delete get<1>(*iter);
+      //  delete get<1>(*iter);
       }
     }
   } else if(index > m_dataIndex) {

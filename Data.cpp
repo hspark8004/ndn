@@ -16,6 +16,8 @@ Data::~Data() {
     std::cout << "Data::~Data()" << std::endl;
     delete m_name;
     delete content;
+
+    std::cout << "complete ~Data()" << std::endl;
 }
 
 void
