@@ -138,7 +138,7 @@ TcpSenderFace::onReadSocket(evutil_socket_t fd, short events, void* arg)
 
     // Send close packet.
     packet = makeInterest(pThis->getName().append("/").append(to_string(fd)).append("/"), &len);
-    cout << "Interest: " << pThis->getName().append("/").append(to_string(clntfd)).append("/") << endl;
+    cout << "Interest: " << pThis->getName().append("/").append(to_string(fd)).append("/") << endl;
     pThis->sendInterest(fd, packet, len);
 
     event_free((*socketEventMap)[fd]);
@@ -150,7 +150,7 @@ TcpSenderFace::onReadSocket(evutil_socket_t fd, short events, void* arg)
 
   // Send interest packet.
   packet = makeInterest(pThis->getName().append("/").append(to_string(fd)).append("/").append(buf, ret), &len);
-  cout << "Interest: " << pThis->getName().append("/").append(to_string(clntfd)).append("/") << endl;
+  cout << "Interest: " << pThis->getName().append("/").append(to_string(fd)).append("/") << endl;
   pThis->sendInterest(fd, packet, len);
 }
 
