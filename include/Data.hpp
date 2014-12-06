@@ -54,13 +54,13 @@ class Data {
 
         // data name
         // ex) org/secmem/gn/a/1~4
-        //char* extractComName(); // org/secmem/gn
-        //char* extractAppName(); // a
-        //char* extractDataNum(); // 1~4
+        char* extractComName(); // org/secmem/gn
+        int extractAppName(); // a
+        int extractDataNum(); // 1~4
 
         // ex) org/secmem/gn/a
-        char* extractComName();
-        int extractAppName();
+//        char* extractComName();
+//        int extractAppName();
 
         void appendName(int number);
 };

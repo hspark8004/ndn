@@ -127,7 +127,7 @@ Data::showData() {
     cout << "======================" << endl;
 }
 
-/*
+
 char*
 Data::extractComName() {
     int size = getNameSize();
@@ -152,7 +152,7 @@ Data::extractComName() {
     return comName;
 }
 
-char*
+int
 Data::extractAppName() {
     int size = getNameSize();
 
@@ -178,10 +178,10 @@ Data::extractAppName() {
     for(int i=0; i<arrSize; i++)
         appName[i] = getName()[cutStartIdx + 1 + i];
 
-    return appName;
+    return atoi(appName);
 }
 
-char*
+int
 Data::extractDataNum() {
     int size = getNameSize();
 
@@ -204,10 +204,12 @@ Data::extractDataNum() {
     for(int i=0; i<arrSize; i++)
         dataNum[i] = getName()[cutIdx + 1 + i];
 
-    return dataNum;
+    return atoi(dataNum);
 }
-*/
 
+
+
+/*
 char*
 Data::extractComName() {
     int size = getNameSize();
@@ -248,7 +250,7 @@ Data::extractAppName() {
         appName[i] = getName()[cutIdx + 1 + i];
 
     return atoi(appName);
-}
+}*/
 
 void
 Data::appendName(int number) {

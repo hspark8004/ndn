@@ -158,12 +158,13 @@ EthernetLayer::receive(void * arg) {
         if(pThis->recvPacket == NULL)
             continue;
 
+//        cout << "aaaaa" << endl;
 		memcpy(&ehP, pThis->recvPacket, sizeof(ether_header));
 
         switch(ehP.ether_type)
         {
             case NDN : 
-                 std::cout << "Receive NDN" << std::endl;
+                std::cout << "Receive NDN" << std::endl;
                 pThis->getContainer()->getLinkLayer()->recvNdnPacket(pThis->recvPacket + sizeof(ether_header), ehP.ether_shost);
                 break;
         }
