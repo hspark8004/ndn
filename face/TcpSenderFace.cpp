@@ -160,7 +160,7 @@ TcpSenderFace::onReceiveData(char* _name, unsigned char* buf, size_t len)
   string name(_name);
   string prefix = getPrefix(getPrefix(name));
   string temp(getPrefix(prefix));
-  int clntfd = stoi(temp.substr(1, temp.size()));
+  int clntfd = stoi(temp.substr(1, temp.size() - 1));
   int index = stoi(getData(name));
 
   // TODO process index
