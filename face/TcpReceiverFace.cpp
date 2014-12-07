@@ -8,6 +8,7 @@
 #include <iostream>
 #include <iterator>
 #include <utility>
+#include <sstream>
 #include <unordered_map>
 #include "Common.hpp"
 #include "Interest.hpp"
@@ -15,28 +16,6 @@
 #include "Container.hpp"
 
 using namespace std;
-
-static pair<unsigned char*, int>
-parseData(Data* DataStruct)
-{
-  unsigned char* buf;
-  int len;
-  tlv_length tlvLength(DataStruct->getNameSize(), DataStruct->getContentSize());
-  tlv_type tlvType(2);
-
-  len = sizeof(tlv_type) + sizeof(tlv_length) + DataStruct->getSize();
-
-  buf = new unsigned char[len + 1];
-
-  memcpy(buf, &tlvType, sizeof(tlv_type));
-  memcpy(buf + sizeof(tlv_type), &tlvLength, sizeof(tlv_length));
-  memcpy(buf + sizeof(tlv_type) + sizeof(tlv_length), DataStruct->getByte(),
-    DataStruct->getSize());
-
-  buf[len] = 0;
-
-  return pair<unsigned char*, int>(buf, len);
-}
 
 TcpReceiverFace::TcpReceiverFace(Container* container, string name, int port)
   : p_container(container), m_name(name), m_port(port)
@@ -106,45 +85,51 @@ TcpReceiverFace::onReadSocket(evutil_socket_t fd, short events, void* arg)
   TcpReceiverFace* pThis = (TcpReceiverFace*)arg;
   unordered_map<int, int>* p_connectionMap = pThis->getConnectionMap();
   char buf[BUFSIZ];
-  ssize_t len;
-  int clntfd;
+  ssize_t len = recv(fd, buf, BUFSIZ, 0);
 
-  if((len = recv(fd, buf, BUFSIZ, 0)) == 0) {
+  if(len == 0) {
     pThis->removeSocketEvent(fd);
     return;
   }
 
   for(auto iter = p_connectionMap->begin(); iter != p_connectionMap->end(); iter++) {
     if(fd == iter->second) {
-      clntfd = iter->first;
+      int clntfd = iter->first;
+      uint64_t segment = *pThis->getSegmentIndex();
+      pThis->setSegmentIndex(segment + 1);
 
-      uint64_t index = *pThis->getDataIndex();
-      pThis->setDataIndex(index + 1);
+      ostringstream stream;
+      stream << pThis->getName() << "/" << to_string(clntfd) << "/" << to_string(segment);
+      string content = string(buf, len);
 
-      string name = pThis->getName().append("/").append(to_string(clntfd)).append("/").append(to_string(index));
-      string data = string(buf, len);
-
-      Data dataPacket(const_cast<char*>(name.c_str()),
-        reinterpret_cast<unsigned char*>(const_cast<char*>(data.c_str())), data.length());
-
-      pair<unsigned char*, int> ret = parseData(&dataPacket);
-      pThis->getContainer()->getLinkLayer()->sendData(clntfd, ret.first, ret.second);
-
+      Data data(const_cast<char*>(stream.str().c_str()),
+        reinterpret_cast<unsigned char*>(const_cast<char*>(content.c_str())),
+        content.size());
+      pThis->sendData(data);
       return;
     }
   }
 }
 
 void
-TcpReceiverFace::onReceiveInterest(int clntfd, string data, uint8_t* shost_mac)
+TcpReceiverFace::sendData(Data& data)
 {
+  p_container->getNdnLayer()->sendData(data);
+}
+
+void
+TcpReceiverFace::onReceiveInterest(Interest& interest, uint8_t* macAddress)
+{
+  int clntfd = interest.extractFileDescriptor();
   int servfd = (*p_connectionMap)[clntfd];
+  string data(interest.extractReqName());
 
   if((data.length() == 0) && (servfd > 0)) { // Receive close message and socket exists.
     removeSocketEvent(servfd);
 
     for(auto iter = rib.begin(); iter != rib.end(); iter++) {
-      if((*shost_mac == *iter->getMacAddress()) && (clntfd == iter->getClientFd())) {
+      if((memcmp(macAddress, iter->getMacAddress(), sizeof(uint8_t) * 6) == 0)
+        && (clntfd == iter->getClientFd())) {
         rib.erase(iter);
         break;
       }
@@ -160,7 +145,8 @@ TcpReceiverFace::onReceiveInterest(int clntfd, string data, uint8_t* shost_mac)
     servfd = createSocketEvent();
 
     for(auto iter = rib.begin(); iter != rib.end(); iter++) {
-      if((*shost_mac == *iter->getMacAddress()) && (clntfd == iter->getClientFd())) {
+      if((memcmp(macAddress, iter->getMacAddress(), sizeof(uint8_t) * 6) == 0)
+        && (clntfd == iter->getClientFd())) {
         iter->setServerFd(servfd);
         break;
       }
@@ -198,51 +184,3 @@ TcpReceiverFace::getConnectionMap()
 {
   return p_connectionMap;
 }
-
-#ifdef __DEBUG_MODE
-void
-TcpReceiverFace::onTest(evutil_socket_t fd, short events, void* arg)
-{
-  TcpReceiverFace* pThis = (TcpReceiverFace*)arg;
-  char buf[BUFSIZ];
-  memset(buf, 0, BUFSIZ);
-  ssize_t len = recv(fd, buf, BUFSIZ, 0);
-
-  if(len == 0) { // Gracefully closed.
-    auto socketEventMap = pThis->getSocketEventMap();
-
-    event_free((*socketEventMap)[fd]);
-    close(fd);
-    socketEventMap->erase(fd);
-
-    return;
-  }
-
-  pThis->onReceiveInterest(buf);
-}
-
-void
-TcpReceiverFace::setSendSocket(int fd)
-{
-  m_sendSocket = fd;
-}
-
-void
-TcpReceiverFace::setRecvSocket(int fd)
-{
-  m_recvSocket = fd;
-
-  struct event* e = event_new(eventBase, m_recvSocket,
-    EV_READ | EV_PERSIST, onTest, (void*)this);
-
-  if(event_add(e, NULL) < 0) {
-    throw runtimeError(&errno);
-  }
-}
-
-int
-TcpReceiverFace::getRecvSocket()
-{
-  return m_recvSocket;
-}
-#endif /* __DEBUG_MODE */

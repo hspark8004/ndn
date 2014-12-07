@@ -8,8 +8,6 @@
 #include "ReqInformation.hpp"
 #include "Data.hpp"
 
-//#define __DEBUG_MODE
-
 #define FACE_TCP_SENDER 2000
 #define FACE_TCP_RECEIVER 2001
 
@@ -23,17 +21,13 @@ string getData(string name);
 string urlEncode(string str);
 string urlDecode(string str);
 
-char* toCharArray(string str);
-unsigned char* toUnsignedCharArray(string str);
-unsigned char* prependTypeLengthValue();
-
-void addInterestInformation(Interest interest, uint8_t* shost_mac);
+void addInterestInformation(Interest interest, uint8_t* macAddress);
 void showInterestInformation();
-ReqInformation* getInterestInformation(int serverFd);
+ReqInformation* getInterestInformation(int servfd);
 
-extern struct event_base* eventBase;
 typedef vector<ReqInformation> rib_t;
 extern rib_t rib;
 
+extern struct event_base* eventBase;
 extern int NextRecvInterestsIndex;
 extern int serverFaceId;

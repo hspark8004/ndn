@@ -13,7 +13,7 @@ rib_t rib;
 int NextRecvInterestsIndex = 1;
 int serverFaceId = 1;
 
-static char
+static inline char
 htoc(string s)
 {
   char high = s[0];
@@ -38,7 +38,7 @@ htoc(string s)
   return ret;
 }
 
-static string
+static inline string
 ctoh(char c)
 {
   char high = (c & 0xF0) >> 4;
@@ -124,12 +124,15 @@ string urlDecode(string url)
 }
 
 void
-addInterestInformation(Interest interest, uint8_t* shost_mac)
+addInterestInformation(Interest interest, uint8_t* macAddress)
 {
-  ReqInformation req(NextRecvInterestsIndex, interest, shost_mac);
-  rib.push_back(req);
+  for(auto iter = rib.begin(); iter != rib.end(); iter++) {
+    if(memcmp(macAddress, iter->getMacAddress(), sizeof(uint8_t) * 6) == 0) {
+      return;
+    }
+  }
 
-  NextRecvInterestsIndex++;
+  rib.push_back(ReqInformation(NextRecvInterestsIndex++, interest, macAddress));
 }
 
 void
@@ -141,33 +144,13 @@ showInterestInformation()
 }
 
 ReqInformation*
-getInterestInformation(int serverFd)
+getInterestInformation(int servfd)
 {
   for(int i=0; i<rib.size(); i++) {
-    if(serverFd == rib.at(i).getServerFd()) {
+    if(servfd == rib.at(i).getServerFd()) {
       return &rib.at(i);
     }
   }
 
   return NULL;
-}
-
-char*
-toCharArray(string str)
-{
-  char* ret = new char[str.length() + 1];
-  copy(str.begin(), str.end(), ret);
-  ret[str.length()] = 0;
-
-  return ret;
-}
-
-unsigned char*
-toUnsignedCharArray(string str)
-{
-  unsigned char* ret = new unsigned char[str.length() + 1];
-  copy(str.begin(), str.end(), ret);
-  ret[str.length()] = 0;
-
-  return ret;
 }

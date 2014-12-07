@@ -3,260 +3,125 @@
 #include "face/TcpReceiverFace.hpp"
 #include "face/TcpSenderFace.hpp"
 
-NdnLayer::NdnLayer() {
-    std::cout << "NdnLayer Constructor" << std::endl;
-}
+using namespace std;
 
-NdnLayer::NdnLayer(Container* container) {
-    std::cout << "NdnLayer(Container& container)" << std::endl;
+NdnLayer::NdnLayer(Container* container)
+{
+  cout << "NdnLayer(Container& container)" << endl;
 
-    this->container = container;
-}
-
-Container*
-NdnLayer::getContainer() {
-    return container;
+  this->container = container;
 }
 
 void
-NdnLayer::setContainer(Container* con) {
-    container = con;
+NdnLayer::sendInterest(Interest& interest)
+{
+  int fd = stoi(getData(getPrefix(interest.getName())));
+  tlv_type type(1); // 나중에 #define 으로 정의하기!
+  tlv_length length(interest.getNameSize(), 0);
+
+  unsigned char buf[sizeof(type) + sizeof(length) + interest.size()];
+  memcpy(buf, &type, sizeof(type));
+  memcpy(buf + sizeof(type), &length, sizeof(length));
+  memcpy(buf + sizeof(type) + sizeof(length), interest.getByte(), interest.size());
+  
+  container->getLinkLayer()->sendInterest(fd, buf, sizeof(buf));
 }
 
 void
-NdnLayer::sendInterest(int fd, char* name) {
+NdnLayer::recvNdnPacket(unsigned char* packet, uint8_t* macAddress)
+{
+  cout << "void NdnLayer::recvNdnPacket(unsigned char* packet)" << endl;
 
-    Interest interest;
+  tlv_type type;
+  tlv_length length;
 
-    interest.setName(name);
-    interest.setSelector(255);
-    interest.setScope(1);
-    interest.setTime(1000);
+  memcpy(&type, packet, sizeof(type));
+  memcpy(&length, packet + sizeof(type), sizeof(length));
 
-    interest.showInterestData();
-    tlv_type tlvType(1);
-
-    tlv_length tlvLength(interest.getNameSize(), 0);
-
-    unsigned char buffer[
-        sizeof(tlv_type) + 
-        sizeof(tlv_length) + 
-        interest.size()];
-
-    memcpy(buffer, &tlvType, sizeof(tlv_type));
-    memcpy(buffer + sizeof(tlv_type), &tlvLength, sizeof(tlv_length));
-    memcpy(buffer + sizeof(tlv_type) + sizeof(tlv_length), interest.getByte(), interest.size());
-    
-    getContainer()->getLinkLayer()->sendInterest(fd, buffer, sizeof(buffer));
-
-    // 메모리 해제
-
+  switch((unsigned int)type.getTlvType())
+  {
+  case 1: // Interest
+    recvInterestPacket(packet + sizeof(type) + sizeof(length), length, macAddress);
+    break;
+  case 2: // Data
+    recvDataPacket(packet + sizeof(type) + sizeof(length), length);
+    break;
+  default: // Error
+    break;
+  }
 }
 
 void
-NdnLayer::recvNdnPacket(unsigned char* packet, uint8_t* shost_mac) {
-    std::cout << "void NdnLayer::recvNdnPacket(unsigned char* packet)" << std::endl;
+NdnLayer::recvInterestPacket(unsigned char* name, tlv_length length, uint8_t* macAddress)
+{
+  cout << __LINE__ << ": NdnLayer::recvInterestPacket" << endl;
 
-    tlv_type type;
-    tlv_length packet_size;
+  Interest interest;
+  interest.setNameSize(length.getNameLength());
+  interest.setInterest(name, length.getNameLength());
+  interest.showInterestData();
 
-    memcpy(&type, packet, sizeof(tlv_type));
-    memcpy(&packet_size, packet + sizeof(tlv_type), sizeof(tlv_length));
-
-    switch((unsigned int)type.getTlvType()) {
-        case 1 : 
-            // Interest
-            recvInterestPacket(packet + sizeof(tlv_type) + sizeof(tlv_length), packet_size, shost_mac);
-            break;
-        case 2 : 
-            // Data
-            recvDataPacket(packet + sizeof(tlv_type) + sizeof(tlv_length), packet_size);
-            break;
-        default : 
-            // error
-            break;
-    }
-}
-
-void
-NdnLayer::recvInterestPacket(unsigned char* packet, tlv_length length, uint8_t* shost_mac) {
-    std::cout << "void NdnLayer::recvInterestPacket(unsigned char* packet, tlv_length length)" << std::endl;
-
-    Interest recvInterest;
-    recvInterest.setNameSize(length.getNameLength());
-
-    recvInterest.setInterest(packet, length.getNameLength());
-
-    recvInterest.showInterestData();
-    
-    //std::cout << "extract Data : " << recvInterest.extractData() << std::endl;
-
-    addInterestInformation(recvInterest, shost_mac);
-    showInterestInformation();
-
-  char* cname = new char[recvInterest.getNameSize() + 1];
-  strncpy(cname, recvInterest.getName(), recvInterest.getNameSize());
-  cname[recvInterest.getNameSize()] = 0;
-
-  string name(cname);
-  string prefix = getPrefix(name);
-  string data = urlDecode(getData(name));
-  string fd = getData(prefix);
-  prefix = getPrefix(prefix);
-
-  cout << "Name : " << name << endl;
-  cout << "Prefix: " << prefix << endl;
-  cout << "Data: " << data << endl;
-  cout << "FD: " << fd << endl;
+  addInterestInformation(interest, macAddress);
+  showInterestInformation();
 
   auto serverMap = container->getServerConnectionMap();
 
   for(auto iter = serverMap->begin(); iter != serverMap->end(); iter++) {
     TcpReceiverFace* face = (TcpReceiverFace*)iter->second;
 
-    cout << "Face: " << face->getName() << endl;
+    if(face->getName().compare(interest.getName()) == 0) {
+      face->onReceiveInterest(interest, macAddress);
+      return;
+    }
+  }
+}
 
-    if(prefix.compare(face->getName()) == 0) {
-      face->onReceiveInterest(atoi(fd.c_str()), data, shost_mac);
+void
+NdnLayer::recvDataPacket(unsigned char* packet, tlv_length length)
+{
+  cout << __LINE__ << ": NdnLayer::recvDataPacket" << endl;
+
+  Data data;
+  data.setData(packet, length);
+  data.showData();
+
+  auto clientMap = container->getClientConnectionMap();
+  auto face = clientMap->find(data.extractAppName());
+
+  if(face == clientMap->end()) {
+      cout << "Not Found client fd" << endl;
+      return;
+  }
+
+  ((TcpSenderFace*)(face->second))->onReceiveData(data);
+}
+
+void
+NdnLayer::sendData(Data& data)
+{
+  int clntfd = data.extractAppName();
+  int servfd = 0;
+
+  for(int i = 0; i < rib.size(); i++) {
+    if(clntfd == rib[i].getClientFd()) {
+      servfd = rib[i].getServerFd();
+      break;
     }
   }
 
-/*
-    if(isCorrectDest(recvInterest)) {
-        std::cout << "CorrectDest" << std::endl;
-        unsigned char tempBuffer[5000];
-        memset(tempBuffer, '1', sizeof(tempBuffer));
+  if(servfd == 0) {
+    cout << __LINE__ << ": 데이터 패킷을 보낼 관심 패킷의 정보가 없습니다." << endl;
+    return;
+  }
 
-        std::cout << "before" << std::endl;
-        std::cout << tempBuffer << std::endl;
-        sendData(123,
-                tempBuffer,
-                sizeof(tempBuffer));
+  tlv_type type(2);
+  tlv_length length(data.getNameSize(), data.getContentSize());
 
-    } else {
-        std::cout << "Not Correct Dest" << std::endl;
-    }
-*/
-}
+  unsigned char buf[sizeof(type) + sizeof(length) + data.getSize()];
 
-
-void
-NdnLayer::recvDataPacket(unsigned char* packet, tlv_length length) {
-    std::cout << "void NdnLayer::recvDataPacket(unsigned char* packet, tlv_length length)" << std::endl;
-
-    Data recvData;
-    recvData.setData(packet, length);
-
-    recvData.showData();
-
-    std::cout << "data name : " << recvData.getName() << std::endl;
-    std::cout << "data com name : " << recvData.extractComName() << std::endl;
-    std::cout << "data dest fd : " << recvData.extractAppName() << std::endl;
-
-//    TcpSenderFace* face = (*getContainer()->getClientConnectionMap())[recvData.extractAppName()];
-    auto face = getContainer()->getClientConnectionMap()->find(recvData.extractAppName());
-    if(face == getContainer()->getClientConnectionMap()->end()) {
-        std::cout << "Not Found client fd" << std::endl;
-        return;
-    }
-    ((TcpSenderFace*)(face->second))->onReceiveData(recvData.getName(), recvData.getContent(), recvData.getContentSize());
-
-}
-
-bool
-NdnLayer::isCorrectDest(Interest interest) {
-    if(!strcmp(interest.extractComName(), getContainer()->getComName())) {
-        return true;
-    } else {
-        return false;
-    }
-}
-
-void
-NdnLayer::sendData(int serverFd, unsigned char* buf, uint64_t size) {
-
-    std::cout << "void NdnLayer::sendData(char* appName, unsigned char* buf, uint64_t size)" << std::endl;
-
-    std::cout << "comName : " << getContainer()->getComName() << std::endl;
-    std::cout << "comNameLength : " << strlen(getContainer()->getComName()) << std::endl;
-    std::cout << "appName : " << serverFd << std::endl;
-    //std::cout << "appNameLength : " << strlen(appName) << std::endl;
-    std::cout << "buf length : " << size << std::endl;
-
-    //Data DataStruct(combineChars(getContainer()->getComName(), appName), buf, size);
-
-    int destFd = -1;
-    for(int i=0; i< rib.size(); i++) {
-        if(serverFd == rib.at(i).getServerFd())
-        {
-            destFd = rib.at(i).getClientFd();
-            break;
-        }
-    }
-    if(destFd == -1) {
-        std::cout << "ServerFd " << serverFd << "가 recvInterests에 존재하지 않습니다." << std::endl;
-        return;
-    }
-
-    char* combineChar = combineCharAndInteger(getContainer()->getComName(), destFd);
-
-    Data DataStruct(combineChar, buf, size);
-    
-    delete combineChar; // 메모리관리를 위해서....
-   
-
-    std::cout << "Data content Size : " << DataStruct.getContentSize() << std::endl;
-    std::cout << "Data Name : " << DataStruct.getName() << std::endl;
-    std::cout << "Data NameSize : " << DataStruct.getNameSize() << std::endl;
-
-    DataStruct.showData();
-
-
-    tlv_length tlvLength(DataStruct.getNameSize(), DataStruct.getContentSize());
-    tlv_type tlvType(2);
-
-    unsigned char buffer[sizeof(tlv_type) + sizeof(tlv_length) + DataStruct.getSize()];
-
-    memcpy(buffer, &tlvType, sizeof(tlv_type));
-    memcpy(buffer + sizeof(tlv_type), &tlvLength, sizeof(tlv_length));
-    memcpy(buffer + sizeof(tlv_type) + sizeof(tlv_length), DataStruct.getByte(), DataStruct.getSize());
-    
-    getContainer()->getLinkLayer()->sendData(serverFd, buffer, sizeof(buffer));
-
-
-}
-
-char*
-NdnLayer::combineCharAndInteger(char* c1, int num) {
-    char str[10];
-    sprintf(str, "%d", num);
-
-    std::string strrrr;
-    char* combine = new char[strlen(c1) + strlen(str) + 1];
-    
-    int i=0;
-    for(i=0; i<strlen(c1); i++)
-        combine[i] = c1[i];
-    combine[i] = '/'; i++;
-    for(i=0; i<strlen(str); i++)
-        combine[strlen(c1) + 1 + i] = str[i];
-
-    return combine;
-}
-char*
-NdnLayer::combineChars(char* c1, char* c2) {
-    char* combine = new char[strlen(c1) + strlen(c2) + 1];
-
-    int i=0;
-    for(i=0; i<strlen(c1); i++)
-        combine[i] = c1[i];
-    combine[i] = '/'; i++;
-
-    for(i=0;i<strlen(c2); i++)
-        combine[strlen(c1) + 1 + i] = c2[i];
-
-    std::cout << "combine : " << combine << std::endl;
-    std::cout << "combine size : " << strlen(combine) << std::endl;
-
-    return combine;
+  memcpy(buf, &type, sizeof(type));
+  memcpy(buf + sizeof(type), &length, sizeof(length));
+  memcpy(buf + sizeof(type) + sizeof(length), data.getByte(), data.getSize());
+  
+  container->getLinkLayer()->sendData(servfd, buf, sizeof(buf));
 }

@@ -18,20 +18,15 @@ public:
   int createSocketEvent();
   void removeSocketEvent(int fd);
   static void onReadSocket(evutil_socket_t fd, short events, void* arg);
-  void onReceiveInterest(int fd, string data, uint8_t* shost_mac);
+  void onReceiveInterest(Interest& interest, uint8_t* macAddress);
+  void sendData(Data& data);
   unordered_map<int, struct event*>* getSocketEventMap();
   unordered_map<int, int>* getConnectionMap();
   virtual string getName();
   virtual int getType();
   Container* getContainer() { return p_container; };
-  uint64_t* getDataIndex() { return p_dataIndex; };
-  void setDataIndex(uint64_t idx) { *p_dataIndex = idx; }
-#ifdef __DEBUG_MODE
-  static void onTest(evutil_socket_t fd, short events, void* arg);
-  void setSendSocket(int fd);
-  void setRecvSocket(int fd);
-  int getRecvSocket();
-#endif /* __DEBUG_MODE */
+  uint64_t* getSegmentIndex() { return p_dataIndex; };
+  void setSegmentIndex(uint64_t idx) { *p_dataIndex = idx; }
 private:
   Container* p_container;
   struct event_base* m_eventBase;
@@ -40,8 +35,4 @@ private:
   unordered_map<int, int>* p_connectionMap;
   string m_name;
   int m_port;
-#ifdef __DEBUG_MODE
-  int m_sendSocket;
-  int m_recvSocket;
-#endif /* __DEBUG_MODE */
 };
